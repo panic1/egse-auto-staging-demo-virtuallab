@@ -140,7 +140,7 @@ Present the working demo to an audience.
 
 ### Task 2: Define demo environment
 
-**Status:** `[~]`
+**Status:** `[x]`
 
 **Work instructions**
 

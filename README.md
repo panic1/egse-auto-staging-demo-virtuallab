@@ -49,9 +49,39 @@ Nitty-gritty details. Read this section when you need specifics.
 
 (TBD — filled in during milestone 2 once the implementation exists.)
 
-### Requirements
+### Requirements & Assumptions
 
-(TBD — host hypervisor, tooling, and VM prerequisites.)
+#### Host
+
+- Ubuntu 24.04 with KVM/libvirt (hardware virtualization enabled).
+- Packages: `qemu-kvm`, `libvirt-daemon-system`, `virtinst`, `libguestfs-tools`,
+  `cloud-image-utils`, `openssh-client`, `gnome-terminal` (demo terminals).
+- libvirt `default` NAT network active; its DHCP range must not collide with the EGSE
+  PCs' static production addresses.
+- Network: the demo runs online when a stable network is reachable and falls back to a
+  primed `lab/cache/` when it is not (see Core Concepts). Fetching the cloud image and
+  packages requires internet at least once.
+
+#### Assumptions
+
+- The staging server and the EGSE PC are stand-ins for their real industrial
+  counterparts: the isolated `staging-net` plays the factory/benchtop network, and the
+  host's NAT network plays the production network.
+- **Staging and production use non-overlapping ranges** (`10.10.0.0/24` vs
+  `192.168.122.0/24`): the staging server bridges both, so overlap would confuse its
+  routing.
+- The EGSE PC uses BIOS firmware (not UEFI/Secure Boot).
+- The EGSE PC's NIC is e1000 and its disk is IDE, so the tiny busybox deploy initramfs
+  needs no extra kernel modules.
+- The golden image is a minimal Ubuntu Server 24.04 (sshd, lab user + ssh key, DHCP
+  networking, cloud-init disabled). It installs **no packages** — all tools/libraries
+  are applied via apt in the production phase, keeping the bake offline-safe.
+- The EGSE PC has a single network port; moving it from `staging-net` to the host
+  network simulates the PC shipping to its production location. During staging it has
+  no internet; it gains package access only after the handover.
+- The Ansible inventory is the single source of truth for PC identity (MAC, staging IP,
+  production IP, hostname).
+- Single EGSE PC (`egse_pc-01`); adding more PCs only requires new inventory entries.
 
 ### Milestones
 
