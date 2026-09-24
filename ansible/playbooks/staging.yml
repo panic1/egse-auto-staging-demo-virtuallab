@@ -1,0 +1,9 @@
+---
+# Set up the staging server: dnsmasq (DHCP + TFTP + PXE), HTTP (golden image,
+# boot files, apt repo), and the Ansible control node.
+# Runs from the demo host against the staging group over the production network.
+- name: Set up the staging server
+  hosts: staging
+  become: true
+  roles:
+    - staging_server

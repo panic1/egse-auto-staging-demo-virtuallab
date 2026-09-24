@@ -1,0 +1,6 @@
+---
+# Role defaults for the staging server. The tftp/http roots hold the PXE boot
+# files and everything the PCs need to install and configure themselves.
+tftp_root: /srv/tftp
+http_root: /srv/http
+demo_dir: /srv/egse-demo

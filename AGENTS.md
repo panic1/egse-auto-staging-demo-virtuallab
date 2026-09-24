@@ -9,14 +9,22 @@ represented as a virtual machine — fully automatically, from scratch.
 
 ## Current state (always verify)
 
-- Milestone 1 (project definition) in progress. **No code exists yet.**
-- Repo contains only: `README.md`, `ROADMAP.md`, `AGENTS.md`.
-- Do not assume implementation exists; check `ROADMAP.md` before writing code.
+- Milestone 1 (project definition) done. Milestone 2 (implementation) in progress:
+  repo layout, Ansible inventory, and role/playbook **scaffolds** exist; scripts and
+  the live demo do not yet.
+- Check `ROADMAP.md` before writing code; mark the relevant task `[~]` while working
+  and `[x]` when done.
 
 ## Key files
 
 - `README.md` — project documentation. Keep in sync with the actual demo.
 - `ROADMAP.md` — the tracker. Update it whenever work starts or finishes.
+- `inventory/` — Ansible inventory: the **single source of truth** for machine identity
+  (MAC, staging/production IP, hostname). Per-PC data in `inventory/host_vars/`.
+- `ansible/` — playbooks and roles (staging server + PC). PC playbooks pick the active
+  address (`staging_ip` vs `production_ip`) based on which network the PC is on.
+- `scripts/` — demo lifecycle scripts (setup/teardown/generate/fetch/demo).
+- `lab/` — gitignored runtime artifacts (VM disks, golden image, cache, ssh keys).
 
 ## Workflow conventions
 

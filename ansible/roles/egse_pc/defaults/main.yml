@@ -1,0 +1,8 @@
+---
+# Tools/libraries installed on the EGSE PC in the production phase. This is the
+# stand-in for the EGSE software stack a real industrial PC would receive.
+egse_pc_packages:
+  - git
+  - curl
+  - htop
+  - python3-requests

@@ -1,0 +1,12 @@
+---
+# Entry point for the egse_pc role. Two phases, selected via tasks_from in the
+# playbooks:
+#   configure.yml  - factory configuration while on the staging network
+#   production.yml - software + updates after handover to the production network
+- name: Apply factory (staging network) configuration
+  ansible.builtin.include_tasks: configure.yml
+  tags: [configure]
+
+- name: Apply production (host network) configuration
+  ansible.builtin.include_tasks: production.yml
+  tags: [production]

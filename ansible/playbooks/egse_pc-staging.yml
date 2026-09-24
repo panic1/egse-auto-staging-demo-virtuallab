@@ -1,0 +1,14 @@
+---
+# Factory configuration of the EGSE PC, run while it is still on the isolated
+# staging network: hostname, ssh host key regeneration, and writing the
+# production netplan (applied at the handover reboot).
+# Runs from the staging server against the egse_pcs group at each PC's
+# staging_ip.
+- name: Configure EGSE PC (factory / staging network)
+  hosts: egse_pcs
+  become: true
+  vars:
+    ansible_host: "{{ staging_ip }}"
+  roles:
+    - role: egse_pc
+      tasks_from: configure.yml

@@ -1,0 +1,4 @@
+# Lab artifacts: VM disks, golden image, dependency cache, ssh keys.
+# These are generated at runtime and must never be committed.
+lab/*
+!lab/.gitkeep

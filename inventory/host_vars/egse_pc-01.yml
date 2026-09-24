@@ -1,0 +1,15 @@
+---
+# Identity of egse_pc-01 — the single source of truth the rest of the demo reads.
+# The VM is created with `mac`, PXE install runs on the staging side at
+# `staging_ip`, and after handover the PC lives at static `production_ip`.
+
+# MAC the PC VM is created with (must match this entry for dnsmasq to pick it up).
+mac: "52:54:00:00:00:01"
+
+hostname: egse_pc-01
+
+# Address on the isolated staging network (reserved by dnsmasq for this MAC).
+staging_ip: 10.10.0.11
+
+# Static address on the production (host NAT) network, applied after handover.
+production_ip: 192.168.122.21

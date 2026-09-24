@@ -1,0 +1,14 @@
+---
+# Production configuration of the EGSE PC, run after it has been re-cabled to
+# the host (production) network: package repository setup, tools/libraries
+# install, system updates, and verification.
+# Runs from the staging server against the egse_pcs group at each PC's
+# production_ip.
+- name: Configure EGSE PC (production / host network)
+  hosts: egse_pcs
+  become: true
+  vars:
+    ansible_host: "{{ production_ip }}"
+  roles:
+    - role: egse_pc
+      tasks_from: production.yml

@@ -1,0 +1,14 @@
+---
+# Connection and addressing for the staging server.
+#
+# The staging server bridges two networks and each must use a distinct range
+# so its routing stays unambiguous:
+#   - eth0 (production / host NAT, 192.168.122.0/24) -> static .2
+#   - eth1 (isolated staging net, 10.10.0.0/24)      -> static .2
+ansible_host: 192.168.122.2
+ansible_user: admin
+ansible_ssh_private_key_file: "{{ playbook_dir }}/../lab/keys/egse-demo"
+
+# Fixed addresses of the staging server.
+mgmt_ip: 192.168.122.2      # production side (eth0); also hosts the apt repo
+staging_ip: 10.10.0.2       # isolated staging side (eth1); dnsmasq/PXE here

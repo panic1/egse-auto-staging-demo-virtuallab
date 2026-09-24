@@ -1,0 +1,15 @@
+---
+# Factory configuration of an EGSE PC, run while it is on the isolated staging
+# network (reached at staging_ip). The machine still uses DHCP here; the
+# production network config is written now but only takes effect at the
+# handover reboot.
+- name: Set the EGSE PC hostname
+  ansible.builtin.hostname:
+    name: "{{ hostname }}"
+
+# TODO(step 4): write /etc/netplan for the static production address
+#   (production_ip / production_gateway / production_dns) WITHOUT applying it —
+#   it is applied after the PC is re-cabled to the production network.
+
+# TODO(step 4): regenerate ssh host keys so the machine does not carry the
+#   golden image's factory keys into production.

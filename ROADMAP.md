@@ -33,15 +33,17 @@ Establish the project's purpose and working agreements in writing. No code yet.
 ### Milestone 2 — Implementation
 
 Deliver a runnable demo that stages, installs, and configures a VM standing in for an
-industrial PC, from scratch.
+industrial PC, from scratch, with a staging server.
 
 **Acceptance criteria**
 
-- Setup from a clean state produces a bare VM representing a freshly staged industrial
-  PC.
-- Teardown destroys the VM and cleans up demo artifacts.
-- Setup is idempotent: re-running from a clean state works without manual cleanup.
-- Install, configure, and verify steps run unattended end-to-end.
+- Setup from a clean state produces a bare PC VM representing a freshly delivered
+  industrial PC.
+- The staging server (a separate VM) PXE-boots the PC over an isolated staging network
+  and installs a golden image onto it.
+- The PC is initially configured on the staging network, then re-cabled to the
+  production network where it receives its software and updates.
+- Teardown destroys the VMs and cleans up demo artifacts. Setup is idempotent.
 - Every demo script is documented and explains the core concept it demonstrates.
 - `README.md` updated to match reality (demo flow, layout, requirements, getting
   started).
@@ -53,7 +55,48 @@ industrial PC, from scratch.
 
 ---
 
-### Milestone 3 — Demo Presentation
+### Milestone 3 — Offline Fallback
+
+Make offline operation the automatic backup scenario: when a stable network exists the
+demo uses it (and primes a local cache); when it does not, the demo falls back to the
+cache on its own — no mode flag required.
+
+**Acceptance criteria**
+
+- `fetch_dependencies.sh` downloads all host-side assets (Ubuntu cloud image,
+  syslinux/pxelinux, busybox, deploy kernel) into `lab/cache/` with a checksum
+  manifest, plus the phase-2 `.deb` bundle as a small apt repository.
+- Every demo script auto-detects the network (`scripts/lib/common.sh`): online →
+  fetch-and-cache; offline → use `lab/cache/` and nothing else.
+- Running the demo once while online primes the cache, so a later run with no network
+  works without preparation.
+- Offline: no outbound internet on the host, the staging server, or the PC; the
+  bundled apt repo is reachable by both the staging server and the PC.
+- `README.md` documents the fallback behavior.
+
+**Tasks:** [Task 6](#task-6-offline-dependency-fetch) ·
+[Task 7](#task-7-offline-fallback)
+
+---
+
+### Milestone 4 — Multiple PC Staging
+
+Stage several PCs from one inventory-driven run, demonstrating repeatability.
+
+**Acceptance criteria**
+
+- 2+ PCs (`egse_pc-01`, `egse_pc-02`, …) each with their own MAC, staging IP, production IP, and
+  hostname in the inventory.
+- dnsmasq reservations, Ansible, and `demo.sh` scale from the inventory with no code
+  duplication.
+- `demo.sh` stages all PCs (or a selected one) through the full flow; verify asserts
+  each PC's end state.
+
+**Tasks:** [Task 8](#task-8-multiple-pc-staging)
+
+---
+
+### Milestone 5 — Demo Presentation
 
 Present the working demo to an audience.
 
@@ -63,9 +106,9 @@ Present the working demo to an audience.
 - Presentation materials / talking points are ready.
 - The demo is delivered.
 
-**Tasks:** [Task 6](#task-6-rehearse-demo) ·
-[Task 7](#task-7-prepare-presentation-materials) ·
-[Task 8](#task-8-deliver-demo)
+**Tasks:** [Task 9](#task-9-rehearse-demo) ·
+[Task 10](#task-10-prepare-presentation-materials) ·
+[Task 11](#task-11-deliver-demo)
 
 ---
 
@@ -97,20 +140,42 @@ Present the working demo to an audience.
 
 ### Task 2: Define demo environment
 
-**Status:** `[ ]`
+**Status:** `[~]`
 
 **Work instructions**
 
-- Decide the VM guest spec (OS, resources) representing the industrial PC.
-- Document host prerequisites: hypervisor, tooling, disk/network.
+- Confirm the VM toolchain (libvirt/KVM + shell scripts; no Vagrant).
+- Define the networks: `staging-net` (isolated) and the production network (host NAT).
+- Define the VMs: staging server and PC(s), their disks, NICs, firmware, and addresses.
+- Document host prerequisites (Ubuntu 24.04, KVM packages, libguestfs).
 
 **Design information**
 
-- TBD.
+- Host: Ubuntu 24.04 with KVM/libvirt. libvirt `default` NAT network is the
+  "production" network; a custom isolated network is `staging-net`.
+- Staging server: Ubuntu 24.04 cloud image, two NICs. PC: empty disk, e1000 NIC, IDE
+  disk, BIOS firmware, PXE boot (network then disk).
+- Golden image built with libguestfs (`virt-customize`); deployed by a tiny busybox
+  initramfs that downloads the image over HTTP and writes it to disk.
+- Boot files + golden image + apt repo are served by the staging server over HTTP/TFTP.
+- Ansible inventory is the single source of truth for PC identity.
 
 **Design decisions**
 
-- TBD.
+- **Staging and production use non-overlapping ranges** (`10.10.0.0/24` vs
+  `192.168.122.0/24`): the staging server bridges both networks, so overlapping ranges
+  would confuse its routing.
+- **The staging server gets a static production-side address** (`192.168.122.2`) so it
+  is a stable target for Ansible and the apt repo.
+- **The PC has a single network port**, re-cabled from `staging-net` to the host network
+  at handover, simulating the PC shipping to its production location. It is configured
+  in two phases (factory config on the staging net, then software/updates on the
+  production net).
+- **Golden-image deployment, BIOS firmware, e1000 NIC + IDE disk**: the deploy initramfs
+  needs no extra kernel modules.
+- The staging server is the **Ansible control node** for the PCs (it has a foot in both
+  networks), so the control node never changes through the handover.
+- Scaled to multiple PCs purely from the inventory (Milestone 4); no per-PC code.
 
 ---
 
@@ -120,13 +185,18 @@ Present the working demo to an audience.
 
 **Work instructions**
 
-- `setup` — create the bare VM (the "stage" state).
-- `teardown` — destroy the VM and clean up demo artifacts.
-- Ensure setup is idempotent: safe to re-run from a clean state without manual cleanup.
+- `setup_virtuallab.sh` — define `staging-net`, create + boot the staging server VM.
+- `setup.sh` — generate the golden image if needed, run `setup_virtuallab.sh`, sync the
+  repo to the staging server, run the `staging.yml` playbook.
+- `teardown.sh` — destroy the VMs and network, remove demo artifacts; keep the golden
+  image unless `--clean`. Idempotent.
 
 **Design information**
 
-- TBD.
+- VMs created with `virt-install`; lifecycle via `virsh`. PC VM gets its MAC from the
+  inventory. Staging server boots from a cloud image with a cloud-init seed.
+- The PC playbooks run from the staging server, so `setup.sh` syncs the repo (inventory
+  + playbooks + `lab/keys`) to it.
 
 **Design decisions**
 
@@ -140,18 +210,25 @@ Present the working demo to an audience.
 
 **Work instructions**
 
-- Install step — unattended OS / base software install.
-- Configure step — apply the target configuration automatically.
-- Verify step — assert the VM reached its expected end state.
+- `generate_golden_image.sh` — bake the golden image (Ubuntu 24.04 minimal + ssh +
+  lab user) and build the busybox deploy initramfs.
+- `demo.sh` — create the bare PC VM, run the install/configure/handover/verify flow with
+  concise logged steps and pauses, and open show-and-tell terminals into the VMs.
 - Document each script so it explains the core demo concept it demonstrates.
 
 **Design information**
 
-- TBD.
+- PXE flow: dnsmasq (DHCP + TFTP + PXE on the staging interface) → pxelinux.0 →
+  deploy kernel + initramfs → download `golden.img` via HTTP → `dd` to disk → reboot.
+- PC boots into the golden OS with DHCP; Ansible (from the staging server) applies the
+  factory configuration, then the PC is re-cabled and rebooted, and Ansible applies the
+  production configuration.
 
 **Design decisions**
 
-- TBD.
+- **The golden image bake installs no packages** (the cloud image already ships
+  openssh-server): all tools/libraries are applied via apt in the production phase.
+  This keeps the bake fully offline-safe.
 
 ---
 
@@ -174,7 +251,83 @@ Present the working demo to an audience.
 
 ---
 
-### Task 6: Rehearse demo
+### Task 6: Offline dependency fetch
+
+**Status:** `[ ]`
+
+**Work instructions**
+
+- `fetch_dependencies.sh`: download the Ubuntu cloud image, syslinux/pxelinux, busybox,
+  and the deploy kernel into `lab/cache/`; write a sha256 manifest.
+- Download the phase-2 package set (tools/libraries/updates) and their dependencies and
+  build a small apt repository with `apt-ftparchive`, served by the staging server.
+
+**Design information**
+
+- `lab/cache/` is gitignored. The apt repo must be reachable by both the staging server
+  (during its own provisioning) and the PC (production phase).
+
+**Design decisions**
+
+- **Bundled apt repo** (explicit `.deb` set + `apt-ftparchive`) chosen over
+  `apt-cacher-ng` or baking everything into the image: deterministic, small, and easy to
+  explain in the demo.
+- **Offline-first, cache-primed**: scripts probe the network; online → fetch-and-cache,
+  offline → fall back to the cache. Running once while online makes the offline backup
+  ready for later.
+
+---
+
+### Task 7: Offline fallback
+
+**Status:** `[ ]`
+
+**Work instructions**
+
+- Provide automatic mode detection in `scripts/lib/common.sh` (probe a stable network,
+  bounded by a timeout) and use it in `setup.sh`, `generate_golden_image.sh`, and
+  `demo.sh`.
+- When online, scripts fetch-and-cache; when offline they run entirely from
+  `lab/cache/` and fail with guidance if an asset is missing.
+- Serve the bundled apt repo so it is reachable by both the staging server and the PC;
+  point `apt_mirror` at it in offline mode.
+
+**Design information**
+
+- TBD.
+
+**Design decisions**
+
+- **Auto-detect, no `--offline` flag**: online uses the network (and primes the cache);
+  offline falls back to `lab/cache/` automatically. The offline scenario is a ready-made
+  backup.
+- The bundled apt repo is served from the host (`192.168.122.1`) in offline mode so it
+  is reachable by both the staging server (own provisioning) and the PC (production
+  phase).
+
+---
+
+### Task 8: Multiple PC staging
+
+**Status:** `[ ]`
+
+**Work instructions**
+
+- Generalize the inventory-driven provisioning to N PCs (`egse_pc-01`, `egse_pc-02`, …).
+- `demo.sh` loops over the PCs (or `--only egse_pc-0X`); verify each PC's end state.
+
+**Design information**
+
+- TBD.
+
+**Design decisions**
+
+- A single golden image is reused for all PCs; identity differs via the inventory
+  (MAC, staging/production IP, hostname).
+
+---
+
+### Task 9: Rehearse demo
 
 **Status:** `[ ]`
 
@@ -192,7 +345,7 @@ Present the working demo to an audience.
 
 ---
 
-### Task 7: Prepare presentation materials
+### Task 10: Prepare presentation materials
 
 **Status:** `[ ]`
 
@@ -210,7 +363,7 @@ Present the working demo to an audience.
 
 ---
 
-### Task 8: Deliver demo
+### Task 11: Deliver demo
 
 **Status:** `[ ]`
 

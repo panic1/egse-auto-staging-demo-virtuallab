@@ -1,0 +1,31 @@
+---
+# Entry point for the staging_server role. Implemented in ROADMAP Task 3/4.
+# - installs and configures dnsmasq for DHCP + TFTP + PXE on the isolated
+#   staging network only (eth1)
+# - deploys the PXE boot files and the golden image to the tftp/http roots
+# - serves a bundled apt repository (used in offline mode)
+# - becomes the Ansible control node for the PCs
+- name: Install staging server packages
+  ansible.builtin.apt:
+    name:
+      - dnsmasq
+      - pxelinux
+      - syslinux-common
+      - ansible
+      - rsync
+    state: present
+    update_cache: true
+
+# TODO(step 4): configure dnsmasq (interface=eth1, bind-interfaces,
+#   dhcp-range, per-MAC dhcp-host entries generated from the egse_pcs
+#   inventory, enable-tftp, tftp-root, dhcp-boot=pxelinux.0).
+
+# TODO(step 4): deploy PXE boot files (pxelinux.0 + syslinux modules, deploy
+#   kernel + busybox initramfs) to the tftp root; deploy golden.img and the
+#   apt repo to the http root.
+
+# TODO(step 4): start an HTTP server (python3 http.server) bound to the
+#   production side to serve golden.img, boot files, and the apt repo.
+
+# TODO(step 4): ensure the demo repo (inventory + playbooks) is present at
+#   /srv/egse-demo so the PC playbooks can be run from the staging server.

@@ -1,0 +1,12 @@
+---
+# Production configuration of a PC, run after handover to the host network
+# (reached at production_ip). Here the PC finally gets its software and updates.
+# TODO(step 4): point the apt sources at apt_mirror and run apt update.
+
+# TODO(step 4): install the egse_pc_packages (tools/libraries) declared in
+#   defaults.
+
+# TODO(step 4): apply OS updates (apt upgrade).
+
+# TODO(step 4): verify end state: static production IP is live, hostname set,
+#   ssh host keys regenerated, expected packages present, system up to date.
