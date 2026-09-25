@@ -4,3 +4,9 @@
 tftp_root: /srv/tftp
 http_root: /srv/http
 demo_dir: /srv/egse-demo
+
+# Staging-network DHCP, served by dnsmasq for the PXE install. Values come
+# from the inventory (group_vars/all.yml staging_dhcp_range, group_vars/staging.yml
+# staging_ip); these defaults keep the role self-contained.
+staging_ip: 10.10.0.2
+staging_dhcp_range: "10.10.0.10,10.10.0.100,255.255.255.0,12h"

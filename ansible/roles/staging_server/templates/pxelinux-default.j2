@@ -1,0 +1,13 @@
+# PXE boot menu for the EGSE demo. Every PC that PXE-boots on the staging
+# network runs the deploy tool: the pinned kernel + busybox initramfs that
+# installs the golden image.
+#
+# console=ttyS0 lets a presenter watch the install live via `virsh console`.
+DEFAULT deploy
+PROMPT 0
+TIMEOUT 1
+
+LABEL deploy
+    KERNEL vmlinuz-deploy
+    INITRD initramfs-deploy.gz
+    APPEND console=tty0 console=ttyS0,115200n8

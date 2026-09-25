@@ -94,15 +94,26 @@ ensure_ssh_key() {
 }
 
 # Poll until ssh to the given host succeeds. Cloud images need time for first
-# boot (growpart, cloud-init), so this retries for a while.
+# boot (growpart, cloud-init), so this retries for a while. An optional jump
+# host (`user@host`) routes the connection through the staging server — needed
+# because the host has no address on the isolated staging network, so PCs
+# there are only reachable via the staging server. A ProxyCommand (not -J) is
+# used so the demo ssh key is also offered to the jump host.
 wait_for_ssh() {
   local host="$1"
   local user="$2"
   local key="$3"
   local tries="${4:-60}"
+  local jump="${5:-}"
+  local jump_opts=()
+  if [ -n "$jump" ]; then
+    local jump_user="${jump%%@*}"
+    local jump_host="${jump#*@}"
+    jump_opts=(-o "ProxyCommand=ssh -i $key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p $jump_user@$jump_host")
+  fi
   echo "Waiting for ssh $user@$host (cloud image first boot can take a while) ..."
   for _ in $(seq 1 "$tries"); do
-    if ssh -i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    if ssh "${jump_opts[@]}" -i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
         -o ConnectTimeout=3 "$user@$host" true 2>/dev/null; then
       echo "SSH ready: $user@$host"
       return 0
@@ -116,20 +127,66 @@ wait_for_ssh() {
 # Open a separate terminal window running an ssh session into a VM. This is the
 # demo's "show-and-tell" window — a live shell into the machine while the demo
 # runs. Falls back to printing the command if no terminal emulator is present.
+# An optional jump host (`user@host`) is used for machines on the isolated
+# staging network (see wait_for_ssh).
 open_ssh_terminal() {
   local title="$1"
   local user="$2"
   local host="$3"
   local key="$4"
-  local cmd="ssh -i $key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $user@$host"
+  local jump="${5:-}"
+  local cmd="ssh"
+  if [ -n "$jump" ]; then
+    local jump_user="${jump%%@*}"
+    local jump_host="${jump#*@}"
+    cmd="$cmd -o ProxyCommand=\"ssh -i $key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p $jump_user@$jump_host\""
+  fi
+  cmd="$cmd -i $key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $user@$host"
+  # The terminal window is a show-and-tell nicety — a broken/missing terminal
+  # emulator must never abort the demo, so failures just fall back to printing
+  # the connect command.
   if command -v gnome-terminal >/dev/null 2>&1; then
-    gnome-terminal --title="$title" -- bash -c "$cmd; exec bash"
+    gnome-terminal --title="$title" -- bash -c "$cmd; exec bash" 2>/dev/null \
+      || { echo "NOTE: could not open a terminal window — connect manually with:" >&2; echo "  $cmd" >&2; }
   elif command -v x-terminal-emulator >/dev/null 2>&1; then
-    x-terminal-emulator -e bash -c "$cmd; exec bash"
+    x-terminal-emulator -e bash -c "$cmd; exec bash" 2>/dev/null \
+      || { echo "NOTE: could not open a terminal window — connect manually with:" >&2; echo "  $cmd" >&2; }
   else
     echo "No terminal emulator found — open this yourself in another terminal:" >&2
     echo "  $cmd" >&2
   fi
+}
+
+# Print a numbered/logged step header. Used by demo.sh to narrate the stages.
+step() {
+  echo
+  echo "==> $*"
+}
+
+# Demo narration pause. Config-driven (inventory group_vars/all.yml,
+# demo_pause) — never a command-line flag, so runs stay reproducible
+# (see AGENTS.md "Config over flags").
+demo_pause() {
+  local label="${1:-}"
+  local enabled
+  enabled="$(labvar staging-server demo_pause true | tr '[:upper:]' '[:lower:]')"
+  if [ "$enabled" = true ]; then
+    printf '    [demo] %s — press Enter to continue ...' "$label"
+    read -r _
+    echo
+  fi
+}
+
+# List the EGSE PC hostnames (egse_pc-01, ...) from the inventory. The
+# inventory is the single source of truth for which PCs the demo stages.
+list_pcs() {
+  local prefix
+  prefix="$(labvar staging-server egse_pc_name_prefix egse_pc-)"
+  ansible-inventory -i "$REPO_ROOT/inventory/hosts.yml" --list 2>/dev/null \
+    | python3 -c 'import json,sys
+d=json.load(sys.stdin)
+hv=d.get("_meta",{}).get("hostvars",{})
+print("\n".join(sorted(h for h in hv if h.startswith(sys.argv[1]))))' "$prefix"
 }
 
 # Fetch a URL into the cache unless it is already there. Returns the cached

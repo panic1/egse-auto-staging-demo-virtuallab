@@ -1,0 +1,14 @@
+---
+# Handlers for the staging_server role.
+
+- name: Restart dnsmasq
+  ansible.builtin.service:
+    name: dnsmasq
+    state: restarted
+    enabled: true
+
+- name: Restart egse-http
+  ansible.builtin.service:
+    name: egse-http
+    state: restarted
+    enabled: true

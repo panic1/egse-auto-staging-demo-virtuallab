@@ -6,7 +6,9 @@
 # MAC the PC VM is created with (must match this entry for dnsmasq to pick it up).
 mac: "52:54:00:00:00:01"
 
-hostname: egse_pc-01
+# Linux hostname of the PC. Valid hostname characters are [a-zA-Z0-9-]
+# (no underscores), so the hostname differs from the inventory key / VM name.
+hostname: egse-pc-01
 
 # Address on the isolated staging network (reserved by dnsmasq for this MAC).
 staging_ip: 10.10.0.11

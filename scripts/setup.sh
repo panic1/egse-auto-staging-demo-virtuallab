@@ -42,14 +42,18 @@ main() {
   # 2. Networks + staging server VM.
   "$SCRIPT_DIR/setup_virtuallab.sh"
 
-  # 3. Sync the repo (inventory, playbooks, ssh key, cache) to the staging
-  #    server so it can act as the Ansible control node for the PCs.
+  # 3. Sync the repo (inventory, playbooks, ssh key, golden image, deploy
+  #    assets) to the staging server so it can act as the Ansible control node
+  #    for the PCs. --sparse keeps the (mostly-zero) golden image sparse on the
+  #    staging server's small disk; lab/cache is host-side only and would just
+  #    bloat it (the deploy assets are already extracted into lab/deploy/).
   ensure_ssh_key
   echo "Syncing repo to the staging server ..."
   ssh $(ssh_opts) "ops@$STAGING_HOST" \
     "sudo mkdir -p /srv/egse-demo && sudo chown ops:ops /srv/egse-demo"
-  rsync -a -e "ssh $(ssh_opts)" \
+  rsync -a --sparse -e "ssh $(ssh_opts)" \
     --exclude '.git' \
+    --exclude 'lab/cache' --exclude 'lab/deploy-src' --exclude 'lab/initramfs' \
     --exclude 'lab/*.qcow2' --exclude 'lab/*.iso' --exclude 'lab/seed' \
     "$REPO_ROOT/" "ops@$STAGING_HOST:/srv/egse-demo/"
 

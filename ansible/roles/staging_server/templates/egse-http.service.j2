@@ -1,0 +1,12 @@
+[Unit]
+Description=EGSE demo HTTP server (golden image + apt repo)
+After=network.target
+
+[Service]
+# Serve /srv/http on all interfaces: the PC reaches it on the staging side
+# (10.10.0.2) during install, and later the apt repo on the production side.
+ExecStart=/usr/bin/python3 -m http.server 80 --bind 0.0.0.0 --directory {{ http_root }}
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

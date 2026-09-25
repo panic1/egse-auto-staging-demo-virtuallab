@@ -1,0 +1,77 @@
+---
+# Verification of an EGSE PC's production end state. Included at the end of
+# production.yml; runs against the machine at its production_ip.
+- name: Gather facts for verification
+  ansible.builtin.setup:
+    gather_subset:
+      - network
+      - default_ipv4
+
+- name: Gather package facts for verification
+  ansible.builtin.package_facts:
+
+- name: Verify the hostname matches the inventory
+  ansible.builtin.assert:
+    that:
+      - ansible_hostname == hostname
+    quiet: true
+
+- name: Verify the static production address is live
+  ansible.builtin.assert:
+    that:
+      - ansible_default_ipv4 is defined
+      - ansible_default_ipv4.address == production_ip
+    quiet: true
+
+- name: Verify the production netplan is in place
+  ansible.builtin.command: grep -q "{{ production_ip }}" /etc/netplan/99-production.yaml
+  changed_when: false
+  failed_when: false
+  register: netplan_check
+
+- name: Assert the production netplan is in place
+  ansible.builtin.assert:
+    that:
+      - netplan_check.rc == 0
+    quiet: true
+
+- name: Verify the ssh host keys were regenerated (no factory keys)
+  ansible.builtin.stat:
+    path: /etc/ssh/.egse_regen_done
+  register: regen_marker
+
+- name: Assert the ssh host keys were regenerated
+  ansible.builtin.assert:
+    that:
+      - regen_marker.stat.exists
+    quiet: true
+
+- name: Verify the EGSE packages are installed
+  ansible.builtin.assert:
+    that:
+      - item in ansible_facts.packages
+    quiet: true
+  loop: "{{ egse_pc_packages }}"
+
+- name: Verify no pending updates
+  ansible.builtin.shell: apt-get -q -s upgrade | grep -q '0 upgraded, 0 newly installed'
+  changed_when: false
+  failed_when: false
+  register: upgrade_check
+
+- name: Assert no pending updates
+  ansible.builtin.assert:
+    that:
+      - upgrade_check.rc == 0
+    quiet: true
+
+- name: Print the verification summary
+  ansible.builtin.debug:
+    msg:
+      - "EGSE PC {{ hostname }} verified:"
+      - "  hostname  = {{ ansible_hostname }}"
+      - "  address   = {{ ansible_default_ipv4.address }} (expected {{ production_ip }})"
+      - "  netplan   = {{ 'ok' if netplan_check.rc == 0 else 'MISSING' }}"
+      - "  ssh keys  = {{ 'regenerated' if regen_marker.stat.exists else 'factory' }}"
+      - "  packages  = {{ egse_pc_packages | join(', ') }}"
+      - "  updates   = {{ 'up to date' if upgrade_check.rc == 0 else 'PENDING' }}"

@@ -1,12 +1,44 @@
 ---
 # Production configuration of a PC, run after handover to the host network
-# (reached at production_ip). Here the PC finally gets its software and updates.
-# TODO(step 4): point the apt sources at apt_mirror and run apt update.
+# (reached at production_ip). Here the PC finally gets its software and
+# updates. The playbook runs from the staging server, which has a foot in both
+# networks, so the control node never changes through the handover.
+- name: Point apt at the configured mirror and drop the default Ubuntu sources
+  ansible.builtin.copy:
+    content: |
+      deb {{ apt_mirror }} noble main universe restricted multiverse
+      deb {{ apt_mirror }} noble-updates main universe restricted multiverse
+      deb {{ apt_mirror }} noble-security main universe restricted multiverse
+    dest: /etc/apt/sources.list
+    mode: "0644"
 
-# TODO(step 4): install the egse_pc_packages (tools/libraries) declared in
-#   defaults.
+- name: Remove the deb822 default sources so only the mirror is used
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/ubuntu.sources
+    state: absent
 
-# TODO(step 4): apply OS updates (apt upgrade).
+- name: Update the apt cache
+  ansible.builtin.apt:
+    update_cache: true
 
-# TODO(step 4): verify end state: static production IP is live, hostname set,
-#   ssh host keys regenerated, expected packages present, system up to date.
+- name: Apply OS updates
+  ansible.builtin.apt:
+    upgrade: dist
+
+- name: Install the EGSE software stack (tools/libraries)
+  ansible.builtin.apt:
+    name: "{{ egse_pc_packages }}"
+    state: present
+
+# The golden image keeps the cloud image's root size (~2.7G; /boot is
+# separate), so remove obsolete packages and the apt cache to keep the root
+# from filling up.
+- name: Remove obsolete packages and clear the apt cache
+  ansible.builtin.shell:
+    cmd: |
+      apt-get -y autoremove
+      apt-get clean
+  changed_when: false
+
+- name: Verify the production end state
+  ansible.builtin.include_tasks: verify.yml

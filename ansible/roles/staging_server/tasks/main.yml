@@ -1,9 +1,9 @@
 ---
-# Entry point for the staging_server role. Implemented in ROADMAP Task 3/4.
+# Entry point for the staging_server role.
 # - installs and configures dnsmasq for DHCP + TFTP + PXE on the isolated
 #   staging network only (eth1)
 # - deploys the PXE boot files and the golden image to the tftp/http roots
-# - serves a bundled apt repository (used in offline mode)
+# - serves a bundled apt repository (used in offline mode, Task 6/7)
 # - becomes the Ansible control node for the PCs
 - name: Install staging server packages
   ansible.builtin.apt:
@@ -16,16 +16,92 @@
     state: present
     update_cache: true
 
-# TODO(step 4): configure dnsmasq (interface=eth1, bind-interfaces,
-#   dhcp-range, per-MAC dhcp-host entries generated from the egse_pcs
-#   inventory, enable-tftp, tftp-root, dhcp-boot=pxelinux.0).
+- name: Create the tftp and http roots
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ tftp_root }}"
+    - "{{ tftp_root }}/pxelinux.cfg"
+    - "{{ http_root }}"
 
-# TODO(step 4): deploy PXE boot files (pxelinux.0 + syslinux modules, deploy
-#   kernel + busybox initramfs) to the tftp root; deploy golden.img and the
-#   apt repo to the http root.
+# --- PXE boot files (tftp root) -------------------------------------------
 
-# TODO(step 4): start an HTTP server (python3 http.server) bound to the
-#   production side to serve golden.img, boot files, and the apt repo.
+- name: Install the PXELINUX bootloader and syslinux bios modules
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ tftp_root }}/"
+    remote_src: true
+    mode: "0644"
+  loop:
+    - /usr/lib/PXELINUX/pxelinux.0
+    - /usr/lib/syslinux/modules/bios/ldlinux.c32
+    - /usr/lib/syslinux/modules/bios/menu.c32
+    - /usr/lib/syslinux/modules/bios/libutil.c32
+    - /usr/lib/syslinux/modules/bios/libcom32.c32
 
-# TODO(step 4): ensure the demo repo (inventory + playbooks) is present at
-#   /srv/egse-demo so the PC playbooks can be run from the staging server.
+- name: Deploy the deploy kernel + initramfs (built by generate_golden_image.sh)
+  ansible.builtin.copy:
+    src: "{{ demo_dir }}/lab/deploy/{{ item.src }}"
+    dest: "{{ tftp_root }}/{{ item.dst }}"
+    remote_src: true
+    mode: "0644"
+  loop:
+    - { src: vmlinuz, dst: vmlinuz-deploy }
+    - { src: initramfs.gz, dst: initramfs-deploy.gz }
+
+- name: Write the PXE boot menu
+  ansible.builtin.template:
+    src: pxelinux-default.j2
+    dest: "{{ tftp_root }}/pxelinux.cfg/default"
+    mode: "0644"
+
+# --- dnsmasq (DHCP + TFTP + PXE on the staging interface) -------------------
+
+# The interface name is unpredictable (ens3/enp2s0/...) — it depends on the
+# PCI slot QEMU gives the NIC. Resolve it from the staging address instead of
+# hardcoding eth1.
+- name: Find the interface carrying the staging address ({{ staging_ip }})
+  ansible.builtin.shell: |
+    ip -4 -o addr show | awk -v ip='{{ staging_ip }}' 'index($4, ip "/") == 1 {print $2; exit}'
+  register: staging_iface
+  changed_when: false
+  check_mode: false
+  failed_when: staging_iface.stdout | length == 0
+
+- name: Write the dnsmasq config for the isolated staging network
+  ansible.builtin.template:
+    src: dnsmasq-egse.conf.j2
+    dest: /etc/dnsmasq.d/egse-staging.conf
+    mode: "0644"
+  vars:
+    staging_iface_name: "{{ staging_iface.stdout }}"
+  notify: Restart dnsmasq
+
+- name: Enable and start dnsmasq
+  ansible.builtin.service:
+    name: dnsmasq
+    state: started
+    enabled: true
+
+# --- HTTP server (golden image + apt repo) ---------------------------------
+
+- name: Symlink the golden image into the http root
+  ansible.builtin.file:
+    src: "{{ demo_dir }}/lab/golden.img"
+    dest: "{{ http_root }}/golden.img"
+    state: link
+
+- name: Write the HTTP server systemd unit
+  ansible.builtin.template:
+    src: egse-http.service.j2
+    dest: /etc/systemd/system/egse-http.service
+    mode: "0644"
+  notify: Restart egse-http
+
+- name: Enable and start the HTTP server
+  ansible.builtin.service:
+    name: egse-http
+    state: started
+    enabled: true

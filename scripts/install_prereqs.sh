@@ -30,6 +30,10 @@ REQUIRED_PACKAGES=(
   curl
   openssh-client
   gnome-terminal
+  # busybox-static provides the static busybox the PXE deploy initramfs is
+  # built from (it replaces/conflicts with the dynamic 'busybox' package).
+  busybox-static
+  zstd
 )
 
 usage() {

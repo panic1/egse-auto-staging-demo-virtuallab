@@ -7,9 +7,45 @@
   ansible.builtin.hostname:
     name: "{{ hostname }}"
 
-# TODO(step 4): write /etc/netplan for the static production address
-#   (production_ip / production_gateway / production_dns) WITHOUT applying it —
-#   it is applied after the PC is re-cabled to the production network.
+# The golden image boots on DHCP (it has no idea which network it will end up
+# on). Write the static production netplan now WITHOUT applying it — it is
+# applied when the PC is re-cabled to the production network at handover.
+# The interface is matched by driver (e1000) — netplan's match.name is a
+# single glob, so driver matching is the name-independent choice (the NIC
+# model is the inventory's egse_pc_nic_model).
+- name: Write the production netplan (applied at the handover reboot)
+  ansible.builtin.copy:
+    content: |
+      network:
+        version: 2
+        ethernets:
+          eth-prod:
+            match:
+              driver: e1000
+            addresses:
+              - {{ production_ip }}/24
+            routes:
+              - to: default
+                via: {{ production_gateway }}
+            nameservers:
+              addresses: [{{ production_dns }}]
+    dest: /etc/netplan/99-production.yaml
+    mode: "0600"
 
-# TODO(step 4): regenerate ssh host keys so the machine does not carry the
-#   golden image's factory keys into production.
+- name: Remove the golden-image DHCP netplan so the handover reboot is clean
+  ansible.builtin.file:
+    path: /etc/netplan/90-dhcp.yaml
+    state: absent
+
+# Regenerate the ssh host keys so the PC does not carry the golden image's
+# factory keys into production. The marker makes this idempotent (regenerate
+# once; verify.yml checks it).
+- name: Regenerate ssh host keys (no factory keys on the PC)
+  ansible.builtin.shell:
+    cmd: |
+      if [ ! -f /etc/ssh/.egse_regen_done ]; then
+        rm -f /etc/ssh/ssh_host_*_key* /etc/ssh/ssh_host_*.pub
+        ssh-keygen -A
+        touch /etc/ssh/.egse_regen_done
+      fi
+    creates: /etc/ssh/.egse_regen_done

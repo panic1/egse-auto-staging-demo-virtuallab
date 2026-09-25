@@ -15,6 +15,14 @@ egse_pc_vm_disk_gb: 8
 # VM creation.
 os_variant: ubuntu24.04
 nic_model: virtio
+# The EGSE PC uses e1000 + IDE (not virtio) so the tiny busybox deploy
+# initramfs needs no extra kernel modules (its NIC driver is e1000, and the
+# IDE controller is built into the kernel). See README assumptions.
+# The i440fx ('pc') machine type is required because the default q35 machine
+# has no IDE controllers.
+egse_pc_nic_model: e1000
+egse_pc_disk_bus: ide
+egse_pc_machine_type: pc
 egse_pc_boot_order: "network,hd"
 egse_pc_name_prefix: "egse_pc-"
 
@@ -35,6 +43,12 @@ production_network_bridge: virbr-prod
 staging_subnet: 10.10.0.0/24
 production_subnet: 10.10.122.0/24
 
+# DHCP served by the staging server's dnsmasq on the isolated staging network,
+# for the PXE install. Must cover the per-PC staging_ip reservations in
+# inventory/host_vars/ (each PC also has an explicit dhcp-host reservation
+# generated from the inventory).
+staging_dhcp_range: "10.10.0.10,10.10.0.100,255.255.255.0,12h"
+
 # Gateways/DNS (host side of the production NAT network).
 production_gateway: 10.10.122.1
 production_dns: 10.10.122.1
@@ -50,10 +64,23 @@ storage_pool: default
 # Install assets.
 cloud_image_url: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
 
+# The PXE deploy tool is built from a pinned Ubuntu kernel + its modules
+# (extracted from these .debs by scripts/generate_golden_image.sh). Pinning a
+# specific version keeps the deploy tool reproducible and independent of the
+# presenter's host kernel.
+deploy_kernel_url: "http://archive.ubuntu.com/ubuntu/pool/main/l/linux/linux-image-unsigned-6.8.0-146-generic_6.8.0-146.146_amd64.deb"
+deploy_modules_url: "http://archive.ubuntu.com/ubuntu/pool/main/l/linux/linux-modules-6.8.0-146-generic_6.8.0-146.146_amd64.deb"
+
 # Open a show-and-tell ssh terminal into the staging server once it is up
 # (see scripts/lib/common.sh open_ssh_terminal). Off by default so setup stays
 # quiet; set to true to get a live terminal after the server is reachable.
 open_terminal_on_setup: true
+
+# demo.sh behavior (config-over-flags, see AGENTS.md):
+#   demo_pause           - press-Enter pause between demo stages for narration.
+#   open_terminal_on_demo - open a show-and-tell ssh terminal into each PC.
+demo_pause: true
+open_terminal_on_demo: true
 
 # Remove cache, keys, and golden image on teardown. Default true keeps the host
 # clean after a demo; set false to preserve the offline-backup assets.

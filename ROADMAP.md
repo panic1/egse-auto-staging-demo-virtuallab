@@ -246,7 +246,7 @@ Present the working demo to an audience.
 
 ### Task 4: Demo scripts
 
-**Status:** `[ ]`
+**Status:** `[x]`
 
 **Work instructions**
 
@@ -271,6 +271,24 @@ Present the working demo to an audience.
   This keeps the bake fully offline-safe.
 - **Small VM sizes throughout** — the demo needs no performance: staging server and EGSE
   PC are 1 vCPU / 1 GiB RAM; the golden image and both VM disks are ~8–10 GB.
+
+**Implementation learnings (Task 4)**
+
+- `virt-resize --expand` breaks the noble cloud image boot (renumbered partitions +
+  reinstalled GRUB hang). The bake keeps the cloud image's partition layout/GRUB
+  unchanged and accepts its ~2.7G root; production disk hygiene (`apt autoremove`/clean)
+  keeps it from filling up.
+- cloud-init's first-boot ssh host key generation is skipped once cloud-init is disabled,
+  so the golden image bakes the keys with `ssh-keygen -A` — without them sshd won't start.
+- The PC's NIC is named `eth0`/`ens3` (interface names differ between the deploy tool and
+  the OS); netplan matches it by **driver** (`e1000`), since `match.name` is a single glob
+  and no one glob covers both naming schemes.
+- `systemd-networkd-wait-online` is disabled in the golden image so a slow/absent network
+  never stalls the boot at the splash.
+- Ansible `tasks_from` is an `import_role` parameter — the `roles:` list keyword ignores
+  it (a subtle gotcha that made both role phases run).
+- Hostnames allow no underscores: the PC's Linux hostname is `egse-pc-01` while its
+  inventory key / VM name stays `egse_pc-01`.
 
 ---
 

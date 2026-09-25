@@ -1,0 +1,29 @@
+# dnsmasq config for the EGSE demo — serves DHCP + TFTP + PXE on the isolated
+# staging interface (eth1) only. There is deliberately no DHCP on the
+# production network; every machine there is static.
+#
+# Core demo concept: the staging server is the machine that preps industrial
+# PCs. When a bare PC boots on the staging network, this DHCP answers and
+# hands it the PXE boot file (pxelinux.0), which loads the deploy kernel +
+# initramfs that install the golden image.
+interface={{ staging_iface_name }}
+bind-interfaces
+
+# No DNS on the staging network (port 0 disables dnsmasq's DNS server).
+port=0
+
+# DHCP range covering the per-PC staging_ip reservations below.
+dhcp-range={{ staging_dhcp_range }}
+dhcp-option=option:router,{{ staging_ip }}
+dhcp-option=option:dns-server,{{ staging_ip }}
+
+# TFTP + PXE.
+enable-tftp
+tftp-root={{ tftp_root }}
+dhcp-boot=pxelinux.0
+
+# One reservation per EGSE PC, generated from the inventory (the single source
+# of truth for PC identity: MAC -> staging_ip -> hostname).
+{% for pc in groups['egse_pcs'] %}
+dhcp-host={{ hostvars[pc]['mac'] }},{{ hostvars[pc]['staging_ip'] }},{{ hostvars[pc]['hostname'] }}
+{% endfor %}

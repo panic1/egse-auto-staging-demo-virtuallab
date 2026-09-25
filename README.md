@@ -33,7 +33,44 @@ understood by an audience.
 
 ## Demo Flow
 
-(TBD — filled in during milestone 2 once the demo scripts exist.)
+The demo runs entirely from `scripts/`, driven by the inventory:
+
+1. **`setup.sh`** brings the lab up (idempotent):
+   1. Bakes the **golden image** (`generate_golden_image.sh`): the cached Ubuntu
+      cloud image + `ops` user + shared ssh key, DHCP netplan, baked ssh host
+      keys, cloud-init disabled. It also builds the **PXE deploy tool**: a
+      pinned kernel + tiny busybox initramfs.
+   2. Creates the **staging server** VM (`setup_virtuallab.sh`) with two NICs
+      (production net + isolated staging net) and the demo networks.
+   3. Syncs the repo to the staging server and configures it with Ansible
+      (`staging.yml`): **dnsmasq** (DHCP + TFTP + PXE on the staging interface),
+      the PXE boot files, and the HTTP server for the golden image.
+
+2. **`demo.sh`** stages each PC from the inventory, in four stages:
+   1. **Stage** — creates the bare PC VM (empty disk, e1000 NIC on the staging
+      net, BIOS firmware, PXE-first boot order).
+   2. **Install** — the PC PXE-boots; dnsmasq hands it the deploy kernel +
+      initramfs, which downloads the golden image over HTTP and writes it to
+      the disk, then powers off. The demo flips the boot order and boots the PC
+      normally.
+   3. **Configure** — Ansible (from the staging server, the control node for the
+      PCs) applies the **factory configuration** on the staging network:
+      hostname, ssh host key regeneration, and the static production netplan
+      (written but not applied). Then the PC is **re-cabled** (its single NIC is
+      moved to the production network — simulating shipping) and rebooted onto
+      its static production address.
+   4. **Configure + Verify** — Ansible applies the **production configuration**:
+      apt mirror setup, OS updates, and the EGSE software stack
+      (`git`, `curl`, `htop`, `python3-requests`), then **verifies** the end
+      state (hostname, production address live, netplan in place, ssh keys
+      regenerated, packages present, nothing upgradable).
+
+3. **`teardown.sh`** destroys the VMs and networks and cleans up lab artifacts
+   (keeping the cache/golden image unless `teardown_clean: true`).
+
+Every script is documented to explain the concept it demonstrates. Run the demo
+interactively with `demo_pause: true` (press-Enter narration) and, optionally,
+`open_terminal_on_demo: true` for live show-and-tell ssh terminals into the PC.
 
 ## Getting Started
 
@@ -47,7 +84,24 @@ Nitty-gritty details. Read this section when you need specifics.
 
 ### Layout
 
-(TBD — filled in during milestone 2 once the implementation exists.)
+- `inventory/` — Ansible inventory, the **single source of truth**: machine
+  identity (MAC, staging/production IP, hostname in `host_vars/`), VM sizing,
+  network layout, and demo behavior (`group_vars/all.yml`, `egse_pcs.yml`,
+  `staging.yml`).
+- `ansible/` — playbooks and roles:
+  - `staging_server` — dnsmasq (DHCP+TFTP+PXE), PXE boot files, HTTP server.
+  - `egse_pc` — `configure.yml` (factory config on the staging net),
+    `production.yml` (apt mirror, updates, EGSE stack), `verify.yml` (end-state
+    assertions).
+  - `egse_pc-staging.yml` / `egse_pc-production.yml` — select the phase via
+    `tasks_from` (an `import_role` parameter; the `roles:` keyword ignores it).
+- `scripts/` — the demo lifecycle:
+  - `setup.sh`, `setup_virtuallab.sh`, `generate_golden_image.sh`, `demo.sh`,
+    `teardown.sh`, `install_prereqs.sh`, and `lib/common.sh` (shared helpers:
+    `labvar`, mode detection, ssh helpers, `list_pcs`, `step`/`demo_pause`).
+- `lab/` — gitignored runtime artifacts: VM disks, seed ISOs, the golden image
+  (`lab/golden.img`), the PXE deploy assets (`lab/deploy/`), the dependency
+  cache (`lab/cache/`), and the demo ssh keys (`lab/keys/`).
 
 ### Requirements & Assumptions
 
@@ -89,7 +143,9 @@ Nitty-gritty details. Read this section when you need specifics.
   no internet; it gains package access only after the handover.
 - The Ansible inventory is the single source of truth for PC identity (MAC, staging IP,
   production IP, hostname).
-- Single EGSE PC (`egse_pc-01`); adding more PCs only requires new inventory entries.
+- Single EGSE PC (inventory key / VM name `egse_pc-01`, hostname `egse-pc-01` —
+  hostnames allow no underscores); adding more PCs only requires new inventory
+  entries.
 
 ### Milestones
 
