@@ -62,10 +62,10 @@ rm -f "$LAB_DIR"/*.qcow2 "$LAB_DIR"/*.iso "$LAB_DIR"/*.xml
 rm -rf "$LAB_DIR/seed"
 
 if [ "$TEARDOWN_CLEAN" = true ]; then
-  echo "teardown_clean=true: removing dependency cache, golden image, deploy assets, and ssh keys ..."
-  rm -rf "$LAB_DIR/cache" "$LAB_DIR/keys" "$LAB_DIR/golden.img" "$LAB_DIR/deploy"
+  echo "teardown_clean=true: removing dependency cache, golden image, deploy assets, ssh keys, and the offline apt repo ..."
+  rm -rf "$LAB_DIR/cache" "$LAB_DIR/keys" "$LAB_DIR/golden.img" "$LAB_DIR/deploy" "$LAB_DIR/apt-repo"
 else
-  echo "teardown_clean=false: keeping cache, golden image, deploy assets, and ssh keys."
+  echo "teardown_clean=false: keeping cache, golden image, deploy assets, ssh keys, and the offline apt repo."
 fi
 
 echo "Done."

@@ -57,21 +57,22 @@ industrial PC, from scratch, with a staging server.
 
 ### Milestone 3 — Offline Fallback
 
-Make offline operation the automatic backup scenario: when a stable network exists the
-demo uses it (and primes a local cache); when it does not, the demo falls back to the
-cache on its own — no mode flag required.
+Make the demo runnable without a network: setup stays online, but after one
+online run the demo's software install on the PC works with no internet, using
+a bundled apt repo.
 
 **Acceptance criteria**
 
-- `fetch_dependencies.sh` downloads all host-side assets (Ubuntu cloud image,
-  syslinux/pxelinux, busybox, deploy kernel) into `lab/cache/` with a checksum
-  manifest, plus the phase-2 `.deb` bundle as a small apt repository.
-- Every demo script auto-detects the network (`scripts/lib/common.sh`): online →
-  fetch-and-cache; offline → use `lab/cache/` and nothing else.
-- Running the demo once while online primes the cache, so a later run with no network
-  works without preparation.
+- `fetch_dependencies.sh` bundles the EGSE PC's package set and dependencies
+  into a small apt repo (`lab/apt-repo/`) with a `Packages.gz` index and a
+  `SHA256SUMS` manifest; `setup.sh` primes it automatically when online.
+- `demo.sh` auto-detects the network (`scripts/lib/common.sh`): online → the PC
+  uses the Ubuntu archive; offline → the bundled apt repo and nothing else.
+- Running setup once while online primes the repo, so the demo works with no
+  network afterwards.
 - Offline: no outbound internet on the host, the staging server, or the PC; the
-  bundled apt repo is reachable by both the staging server and the PC.
+  bundled apt repo is reachable by the PC (production phase). Setup remains
+  online-only.
 - `README.md` documents the fallback behavior.
 
 **Tasks:** [Task 6](#task-6-offline-dependency-fetch) ·
@@ -325,28 +326,37 @@ Present the working demo to an audience.
 
 ### Task 6: Offline dependency fetch
 
-**Status:** `[ ]`
+**Status:** `[x]`
 
 **Work instructions**
 
-- `fetch_dependencies.sh`: download the Ubuntu cloud image, syslinux/pxelinux, busybox,
-  and the deploy kernel into `lab/cache/`; write a sha256 manifest.
-- Download the phase-2 package set (tools/libraries/updates) and their dependencies and
-  build a small apt repository with `apt-ftparchive`, served by the staging server.
+- `fetch_dependencies.sh`: bundle the EGSE PC's package set (`egse_pc_packages`
+  in the inventory) plus all their dependencies into a small flat apt repo at
+  `lab/apt-repo/`, with a `Packages.gz` index and a `SHA256SUMS` manifest.
+- `setup.sh` calls `fetch_dependencies.sh` when online, so the offline demo is
+  primed automatically.
 
 **Design information**
 
-- `lab/cache/` is gitignored. The apt repo must be reachable by both the staging server
-  (during its own provisioning) and the PC (production phase).
+- `lab/apt-repo/` is gitignored (under `lab/`). The staging server serves it to
+  the PC at `apt_repo_url` (`http://10.10.122.2/apt`) in offline mode.
 
 **Design decisions**
 
-- **Bundled apt repo** (explicit `.deb` set + `apt-ftparchive`) chosen over
-  `apt-cacher-ng` or baking everything into the image: deterministic, small, and easy to
-  explain in the demo.
-- **Offline-first, cache-primed**: scripts probe the network; online → fetch-and-cache,
-  offline → fall back to the cache. Running once while online makes the offline backup
-  ready for later.
+- **Only the demo has an offline mode; setup stays online-only.** Setup fetches
+  the cloud image, build assets, and provisions the staging server over the
+  network. The single offline deliverable is the bundled apt repo for the PC's
+  production phase. The original "boot-asset cache + manifest" scope (cloud
+  image, syslinux/pxelinux, busybox, deploy kernel) was dropped accordingly —
+  those are all fetched at online setup.
+- **Bundled apt repo** (explicit `.deb` set + `dpkg-scanpackages`) chosen over
+  `apt-cacher-ng` or baking everything into the image: deterministic, small,
+  and easy to explain in the demo. Flat repo + `[trusted=yes]` (no GPG).
+- **Bounded package set**: `egse_pc_packages` + full dependency closure
+  (no Recommends/Suggests). The PC's offline `apt upgrade` only upgrades what
+  the repo contains, so "nothing upgradable" in the verify still holds.
+- The repo is served from the staging server (not the host) — the PC reaches it
+  at `apt_repo_url`; the staging server's own provisioning stays online.
 
 ---
 
@@ -357,12 +367,12 @@ Present the working demo to an audience.
 **Work instructions**
 
 - Provide automatic mode detection in `scripts/lib/common.sh` (probe a stable network,
-  bounded by a timeout) and use it in `setup.sh`, `generate_golden_image.sh`, and
-  `demo.sh`.
-- When online, scripts fetch-and-cache; when offline they run entirely from
-  `lab/cache/` and fail with guidance if an asset is missing.
-- Serve the bundled apt repo so it is reachable by both the staging server and the PC;
-  point `apt_mirror` at it in offline mode.
+  bounded by a timeout) and use it in `demo.sh`.
+- Serve the bundled apt repo from the staging server (symlink `/srv/http/apt` →
+  `/srv/egse-demo/lab/apt-repo`); point the PC's `apt_mirror` at `apt_repo_url` in
+  offline mode.
+- Offline: no outbound internet on the host, the staging server, or the PC; the bundled
+  apt repo is reachable by the PC (production phase). Setup stays online-only.
 
 **Design information**
 
@@ -370,12 +380,11 @@ Present the working demo to an audience.
 
 **Design decisions**
 
-- **Auto-detect, no `--offline` flag**: online uses the network (and primes the cache);
-  offline falls back to `lab/cache/` automatically. The offline scenario is a ready-made
-  backup.
-- The bundled apt repo is served from the host (`10.10.122.1`) in offline mode so it
-  is reachable by both the staging server (own provisioning) and the PC (production
-  phase).
+- **Auto-detect, no `--offline` flag**: online uses the network; offline falls back to
+  the bundled apt repo automatically. The offline scenario is a ready-made backup.
+- **Demo-only offline**: setup (golden image bake, staging server provisioning) remains
+  online-only; only the PC's production software install is served offline, from the
+  staging server (`apt_repo_url`), not the host.
 
 ---
 

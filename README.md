@@ -98,8 +98,10 @@ apply. Undo it later with `sudo ./scripts/install_prereqs.sh --uninstall`.
 
 This bakes the golden image (if needed), defines the two demo networks and the
 staging server VM, syncs the repo to the staging server, and configures it with
-Ansible (dnsmasq DHCP/TFTP/PXE, the HTTP server, the PXE boot files). It is
-idempotent — safe to re-run.
+Ansible (dnsmasq DHCP/TFTP/PXE, the HTTP server, the PXE boot files). When
+online, it also bundles the PC's EGSE packages into a small apt repo
+(`scripts/fetch_dependencies.sh`) so the **demo can later run with no network**.
+It is idempotent — safe to re-run.
 
 ### 3. Run the demo
 
@@ -117,6 +119,12 @@ The demo is interactive by default: `demo_pause: true` pauses between stages
 for narration (press Enter), and `open_terminal_on_setup` / `open_terminal_on_demo`
 open live show-and-tell ssh terminals into the machines. Set them to `false`
 in `inventory/group_vars/all.yml` for an unattended run.
+
+**Offline demo.** Only the demo has an offline mode — setup stays online. After
+an online `setup.sh` (which primes the offline apt repo), you can disconnect the
+network and `demo.sh` still works: the PC's production phase installs the EGSE
+software stack from the bundled repo (`lab/apt-repo/`) served by the staging
+server, instead of from `archive.ubuntu.com`.
 
 ### 4. Tear down
 
@@ -172,9 +180,12 @@ Nitty-gritty details. Read this section when you need specifics.
 - The demo defines its own two networks in the system daemon (`production-net` on
   `10.10.122.0/24` — **no DHCP**, every device static — and `staging-net` on
   `10.10.0.0/24`); it does not touch the host's `default` network.
-- Network: the demo runs online when a stable network is reachable and falls back to a
-  primed `lab/cache/` when it is not (see Core Concepts). Fetching the cloud image and
-  packages requires internet at least once.
+- Network: **setup runs online** — it fetches the cloud image and build assets and
+  provisions the staging server. The **demo can then run offline**: online setup
+  bundles the PC's EGSE packages into a small apt repo (`lab/apt-repo/`, via
+  `scripts/fetch_dependencies.sh`) that the staging server serves to the PC, so
+  `demo.sh` works with no internet. Fetching everything requires internet at least
+  once (during setup).
 
 #### Assumptions
 

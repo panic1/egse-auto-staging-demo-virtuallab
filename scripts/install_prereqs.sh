@@ -34,6 +34,10 @@ REQUIRED_PACKAGES=(
   # built from (it replaces/conflicts with the dynamic 'busybox' package).
   busybox-static
   zstd
+  # apt-utils/dpkg-dev provide apt-ftparchive/dpkg-scanpackages, used by
+  # fetch_dependencies.sh to build the bundled offline apt repo.
+  apt-utils
+  dpkg-dev
 )
 
 usage() {

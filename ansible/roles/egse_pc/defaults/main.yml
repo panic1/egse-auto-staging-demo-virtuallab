@@ -1,8 +1,8 @@
 ---
-# Tools/libraries installed on the EGSE PC in the production phase. This is the
-# stand-in for the EGSE software stack a real industrial PC would receive.
-egse_pc_packages:
-  - git
-  - curl
-  - htop
-  - python3-requests
+# Role defaults for the egse_pc role.
+#
+# The tools/libraries installed on the EGSE PC in the production phase (the
+# stand-in for the EGSE software stack) are declared in the INVENTORY
+# (inventory/group_vars/egse_pcs.yml, egse_pc_packages) — the single source
+# of truth — so scripts/fetch_dependencies.sh can read them too.
+egse_pc_packages: []

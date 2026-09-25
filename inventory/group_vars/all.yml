@@ -64,6 +64,14 @@ storage_pool: default
 # Install assets.
 cloud_image_url: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
 
+# The bundled apt repo for the OFFLINE demo (see scripts/fetch_dependencies.sh).
+# It is a flat repo on the host (apt_repo_dir) that the staging server serves
+# at apt_repo_url, so the PC's production phase can install the EGSE software
+# stack with no internet. The demo's online default uses archive.ubuntu.com
+# (apt_mirror in group_vars/egse_pcs.yml).
+apt_repo_dir: lab/apt-repo
+apt_repo_url: "http://10.10.122.2/apt"
+
 # The PXE deploy tool is built from a pinned Ubuntu kernel + its modules
 # (extracted from these .debs by scripts/generate_golden_image.sh). Pinning a
 # specific version keeps the deploy tool reproducible and independent of the

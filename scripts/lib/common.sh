@@ -83,6 +83,17 @@ labvar() {
   fi
 }
 
+# Like labvar, but for LIST-valued variables: prints one element per line.
+labvar_list() {
+  local host="$1"
+  local var="$2"
+  ansible-inventory -i "$REPO_ROOT/inventory/hosts.yml" --host "$host" 2>/dev/null \
+    | python3 -c 'import json,sys
+d = json.load(sys.stdin)
+v = d.get(sys.argv[1], [])
+print("\n".join(v) if isinstance(v, list) else v)' "$var"
+}
+
 # Generate the shared demo ssh keypair (lab/keys/egse-demo) if it is missing.
 # The same key authorizes the lab user on the staging server and on every EGSE PC.
 ensure_ssh_key() {

@@ -39,6 +39,15 @@ main() {
     echo "NOTE: scripts/generate_golden_image.sh not present yet; skipping."
   fi
 
+  # 1b. Offline backup (Task 6): bundle the PC's EGSE packages into a small
+  #     apt repo so the DEMO can run without a network. Setup itself stays
+  #     online-only; this just primes the offline repo.
+  if [ "$mode" = online ] && [ -x "$SCRIPT_DIR/fetch_dependencies.sh" ]; then
+    "$SCRIPT_DIR/fetch_dependencies.sh"
+  elif [ ! -x "$SCRIPT_DIR/fetch_dependencies.sh" ]; then
+    echo "NOTE: scripts/fetch_dependencies.sh not present yet; skipping."
+  fi
+
   # 2. Networks + staging server VM.
   "$SCRIPT_DIR/setup_virtuallab.sh"
 

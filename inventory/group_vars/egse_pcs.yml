@@ -7,6 +7,17 @@ ansible_ssh_private_key_file: "{{ playbook_dir }}/../../lab/keys/egse-demo"
 staging_gateway: 10.10.0.2        # staging server on the isolated staging net
 
 # Where the EGSE PC fetches packages during the production phase. The online
-# default is the Ubuntu archive; offline mode (./scripts/setup.sh) points this
-# at the bundled apt repo served by the host.
+# default is the Ubuntu archive; the offline demo (scripts/fetch_dependencies.sh
+# + demo.sh) points this at the bundled apt repo served by the staging server
+# (apt_repo_url in group_vars/all.yml).
 apt_mirror: "http://archive.ubuntu.com/ubuntu"
+
+# The EGSE software stack installed on the PC in the production phase — the
+# stand-in for what a real industrial PC would receive. This is also the
+# package set bundled into the offline apt repo (fetch_dependencies.sh), so it
+# lives here as the single source of truth.
+egse_pc_packages:
+  - git
+  - curl
+  - htop
+  - python3-requests
