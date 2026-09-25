@@ -69,10 +69,11 @@ The demo runs entirely from `scripts/`, driven by the inventory:
    (keeping the cache/golden image unless `teardown_clean: true`).
 
 **Typical run times** (measured on the reference host, online, `demo_pause: false`):
-`setup.sh` ≈ **0.5 min** (incremental re-run); `demo.sh` ≈ **4 min per PC** —
+`teardown.sh` ≈ **0.1 min**; `setup.sh` ≈ **0.5 min** for an incremental re-run
+of an already-provisioned lab, ≈ **2.7 min** to rebuild from a full teardown
+(cache kept via `teardown_clean: false`); `demo.sh` ≈ **4 min per PC** —
 **≈ 8 min** for both PCs. The network install cycle (image download + disk
-write + first boot) dominates; an idempotent re-setup of an already-provisioned
-lab is faster.
+write + first boot) dominates.
 
 Every script is documented to explain the concept it demonstrates. Run the demo
 interactively with `demo_pause: true` (press-Enter narration) and, optionally,

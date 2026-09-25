@@ -455,7 +455,7 @@ Present the working demo to an audience.
 
 ### Task 9: Rehearse demo
 
-**Status:** `[ ]`
+**Status:** `[x]`
 
 **Work instructions**
 
@@ -463,11 +463,23 @@ Present the working demo to an audience.
 
 **Design information**
 
-- TBD.
+- Rehearsal run from a clean state (teardown → setup from cache → demo) with
+  `egse_pc_scope: [egse_pc-01]` and `demo_pause: false`:
+  - `teardown.sh` ≈ **0.1 min** (with `teardown_clean: false` keeping cache).
+  - `setup.sh` ≈ **2.7 min** (rebuilt the staging server from cache; no
+    re-download of the cloud image or deploy assets).
+  - `demo.sh` ≈ **4.3 min** — the full one-PC flow
+    (stage → install → factory → handover → production → verify) completed
+    cleanly with no pauses, no terminal windows, and the verification summary
+    printed. No gaps found.
+- Config was restored to defaults afterwards (`demo_pause: true`,
+  `open_terminal_on_demo: true`, `teardown_clean: true`).
 
 **Design decisions**
 
-- TBD.
+- Rehearsal used the default single-PC scope and no pause (unattended run) —
+  every stage of the flow is exercised either way, at roughly half the runtime
+  of a two-PC run.
 
 ---
 
