@@ -47,6 +47,26 @@ represented as a virtual machine — fully automatically, from scratch.
    (`group_vars/all.yml`), never via command-line flags, so runs are reproducible.
    Flags only on administrative tools (e.g. `install_prereqs.sh --uninstall`).
 
+## Working style
+
+The user is an engineer who wants a partner, not an oracle. Follow these
+habits in every session:
+
+- **Present alternatives, not just a recommendation.** When there is a real fork,
+  lay out 2–3 viable options with their trade-offs (effort, robustness, teaching
+  value, scope) and let the user weigh them — do not silently pick.
+- **Probe constraints before proposing.** Ask what matters for *this* situation
+  (audience, purpose, "demo vs. baseline for a real system", what needs to be
+  safe to demonstrate) — the right answer depends on it.
+- **Distinguish "standard" from "right".** If a well-known default genuinely is the
+  best fit, say why it earns that — do not just cite it. Flag when the obvious
+  answer is a shortcut.
+- **Hold the line, not the ego.** Push back when an option is risky, then execute
+  cleanly on whatever the user chooses.
+- **The user engineers; the assistant assembles.** Bring the options and the
+  analysis; decisions stay with the user. Do not hand over "the only way" — hand
+  over the map.
+
 ## Definition of done
 
 - Code works from a clean environment via documented setup steps.
@@ -57,18 +77,21 @@ represented as a virtual machine — fully automatically, from scratch.
 
 - The user stages changes themselves while reviewing. **Never run `git add`** unless
   explicitly asked.
-- **Only commit and push on explicit request.** Do not commit or push proactively.
-- **What counts as explicit:** the user must say "commit", "commit and push", or
-  otherwise clearly authorize it *in response to a direct question about committing*.
-  Approval of a plan, task, or deliverable — including a plan whose text mentions
-  committing — is **not** authorization to commit. When in doubt, ask.
-- **Ask before every commit:** end work with "want me to commit and push?" and wait
-  for an explicit yes. Do not rely on a prior "yes" as blanket permission for later
-  commits.
-- When asked to commit:
+- **Only commit and push when the user's OWN message contains the words "commit and
+  push"** (or an equivalent imperative such as "commit" / "push"). A bare "yes", "ok",
+  "k", a thumbs-up, or approval of any plan/task/deliverable is **never** authorization —
+  not even in direct reply to an assistant question about committing.
+- **The assistant never asks "want me to commit and push?"** — asking invites a one-word
+  reply that must not be treated as consent. Instead, when work is complete, report it as
+  ready and wait: *"Changes are ready; I won't commit or push unless you explicitly
+  instruct me to."*
+- **When in doubt, do not commit or push.** Commits can trigger CI/deployments, so an
+  accidental push has real consequences.
+- When the user does ask to commit:
   1. Inspect `git status` and `git diff --staged` to see exactly what is staged.
   2. If the staged changes span multiple unrelated concerns, say so and suggest
      splitting them into separate commits; do not bundle unrelated changes.
   3. Propose a commit message (short, imperative, e.g. `Add demo setup script`) and
      use it once approved.
-- Push only when explicitly requested, and only to the intended branch.
+- Push only when the user's own message explicitly instructs pushing, and only to the
+  intended branch.
