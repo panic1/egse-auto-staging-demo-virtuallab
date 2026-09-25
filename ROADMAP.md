@@ -525,6 +525,13 @@ Present the working demo to an audience.
 **Work instructions**
 
 - Present the demo to the audience.
+- Do a **dress rehearsal** first: a narrated, paused run (as the audience will
+  see it) against `docs/presentation.md`'s phase-by-phase script, with
+  `demo_pause: true` and `open_terminal_on_demo: true`. Unlike the Task 9
+  technical rehearsal (unattended), this mirrors the real show.
+- **Study the slide deck** (`docs/slides.md`) and presenter's script
+  (`docs/presentation.md`) until the mapping deck ↔ words ↔ live output is
+  second nature.
 
 **Design information**
 
