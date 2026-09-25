@@ -434,7 +434,7 @@ Present the working demo to an audience.
 
 ### Task 10: Prepare presentation materials
 
-**Status:** `[ ]`
+**Status:** `[x]`
 
 **Work instructions**
 
@@ -442,11 +442,28 @@ Present the working demo to an audience.
 
 **Design information**
 
-- TBD.
+- `docs/presentation.md` is a **presenter's guide**, not a slide deck: a
+  phase-by-phase script that mirrors the actual `demo.sh` output (`==> 1/4 STAGE`,
+  `2/4 INSTALL`, `3/4 CONFIGURE`, `3/4 HANDOVER`, `4/4 CONFIGURE + VERIFY`), so
+  the presenter talks in lockstep with the running demo. It covers the opening
+  pitch, the mental model (real world ↔ VM mapping), a preparation checklist, the
+  offline variant, and likely Q&A.
+- `docs/slides.md` is the **slide deck** (Marp markdown: `---` per slide, front
+  matter `marp: true`), ~21 slides sized for a 15–30 min talk. Rendered with the
+  Marp CLI (`npx @marp-team/marp-cli docs/slides.md [--pdf]`) or the Marp for
+  VS Code extension.
 
 **Design decisions**
 
-- TBD.
+- **Talking points over slides.** The demo is the visual; the guide gives the
+  words and the concepts per phase. It can be turned into slides later without
+  losing content. (This materialized as two files: `slides.md` for the visuals,
+  `presentation.md` for the script.)
+- **Tied to the real script output** so rehearsal and delivery stay consistent
+  with what the audience sees on screen.
+- **Marp markdown** (plain markdown + `---` breaks) chosen over reveal.js/HTML:
+  versionable, readable in the repo, and renders to HTML/PDF with a free tool on
+  the presenter's machine.
 
 ---
 

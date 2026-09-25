@@ -214,6 +214,15 @@ Nitty-gritty details. Read this section when you need specifics.
   hostnames allow no underscores); adding more PCs only requires new inventory
   entries.
 
+### Presentation
+
+- **Slides** (Marp markdown): [docs/slides.md](./docs/slides.md) — render with
+  `npx @marp-team/marp-cli docs/slides.md` (HTML) or `--pdf`, or the Marp for
+  VS Code extension.
+- **Presenter's script** (phase-by-phase talking points tied to the `demo.sh`
+  output, the offline variant, and likely Q&A):
+  [docs/presentation.md](./docs/presentation.md).
+
 ### Milestones
 
 See [ROADMAP.md](./ROADMAP.md) for the project tracker with milestones and tasks.
