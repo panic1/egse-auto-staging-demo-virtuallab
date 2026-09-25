@@ -294,7 +294,7 @@ Present the working demo to an audience.
 
 ### Task 5: Update README for implementation
 
-**Status:** `[ ]`
+**Status:** `[x]`
 
 **Work instructions**
 
@@ -303,11 +303,23 @@ Present the working demo to an audience.
 
 **Design information**
 
-- TBD.
+- The README is split into a narrative part (Overview, Core Concepts, Demo Flow,
+  Getting Started) and a Reference part (Layout, Requirements & Assumptions,
+  Milestones). The Demo Flow and Layout sections were filled during Task 4, at the
+  user's request, since the implementation existed by then; Task 5 completed the
+  Getting Started section and aligned the requirements/assumptions with the actual
+  implementation.
 
 **Design decisions**
 
-- TBD.
+- **Getting Started is a short, ordered command walk-through** (install prereqs →
+  setup → demo → teardown) plus a pointer to the inventory for the behavior knobs
+  (`demo_pause`, `open_terminal_on_setup`, `open_terminal_on_demo`, `teardown_clean`),
+  so a presenter can bring the demo up with no other documentation.
+- **The documented host package list is generated from `install_prereqs.sh`** (the
+  single source of truth for host prerequisites), not maintained separately.
+- **The offline-fallback wording stays as-is** until Milestone 3 lands; the full
+  offline bundle (bundled apt repo) is documented there.
 
 ---
 

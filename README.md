@@ -74,9 +74,60 @@ interactively with `demo_pause: true` (press-Enter narration) and, optionally,
 
 ## Getting Started
 
-(TBD — how to bring up the demo environment.)
+Everything runs from this repo on an Ubuntu 24.04 host. All demo behavior is
+configured in the Ansible inventory (`inventory/group_vars/all.yml`) — never
+via command-line flags — so runs are reproducible.
 
----
+### 1. Install the host prerequisites (once)
+
+```sh
+sudo ./scripts/install_prereqs.sh
+```
+
+This installs the packages the demo needs (KVM/libvirt, virtinst,
+libguestfs-tools, ansible, busybox-static for the deploy initramfs, …), starts
+the libvirt daemon, and adds your user to the `libvirt`/`kvm` groups.
+**Log out and back in** (or run `newgrp libvirt`) for the group changes to
+apply. Undo it later with `sudo ./scripts/install_prereqs.sh --uninstall`.
+
+### 2. Bring the lab up
+
+```sh
+./scripts/setup.sh
+```
+
+This bakes the golden image (if needed), defines the two demo networks and the
+staging server VM, syncs the repo to the staging server, and configures it with
+Ansible (dnsmasq DHCP/TFTP/PXE, the HTTP server, the PXE boot files). It is
+idempotent — safe to re-run.
+
+### 3. Run the demo
+
+```sh
+./scripts/demo.sh
+```
+
+This stages each PC from the inventory through the full lifecycle: it creates
+the bare PC VM, PXE-installs the golden image, applies the factory
+configuration on the staging network, re-cables the PC to the production
+network (the "shipping" handover), and finishes with the production software,
+updates, and a verification of the end state.
+
+The demo is interactive by default: `demo_pause: true` pauses between stages
+for narration (press Enter), and `open_terminal_on_setup` / `open_terminal_on_demo`
+open live show-and-tell ssh terminals into the machines. Set them to `false`
+in `inventory/group_vars/all.yml` for an unattended run.
+
+### 4. Tear down
+
+```sh
+./scripts/teardown.sh
+```
+
+Destroys the VMs and the demo networks and cleans up lab artifacts. By default
+(`teardown_clean: true`) it also removes the dependency cache, golden image,
+deploy assets, and ssh keys; set `teardown_clean: false` to keep them (e.g. so
+the offline cache stays primed across repeated runs).
 
 ## Reference
 
@@ -109,8 +160,9 @@ Nitty-gritty details. Read this section when you need specifics.
 
 - Ubuntu 24.04 with KVM/libvirt (hardware virtualization enabled).
 - Packages: `qemu-kvm`, `libvirt-daemon-system`, `virtinst`, `libguestfs-tools`,
-  `cloud-image-utils`, `openssh-client`, `gnome-terminal` (demo terminals) — install
-  them with `sudo ./scripts/install_prereqs.sh`.
+  `cloud-image-utils`, `ansible`, `rsync`, `curl`, `openssh-client`,
+  `gnome-terminal` (demo terminals), `busybox-static` (the deploy initramfs),
+  `zstd` — install them with `sudo ./scripts/install_prereqs.sh`.
 - The demo uses the **system libvirt daemon** (`qemu:///system`) — the session daemon
   cannot create the bridge networks the demo needs. `install_prereqs.sh` adds your user
   to the `libvirt` and `kvm` groups (re-login or `newgrp libvirt` after).
@@ -137,10 +189,13 @@ Nitty-gritty details. Read this section when you need specifics.
   needs no extra kernel modules.
 - The golden image is a minimal Ubuntu Server 24.04 (sshd, lab user + ssh key, DHCP
   networking, cloud-init disabled). It installs **no packages** — all tools/libraries
-  are applied via apt in the production phase, keeping the bake offline-safe.
-- The EGSE PC has a single network port; moving it from `staging-net` to the host
-  network simulates the PC shipping to its production location. During staging it has
-  no internet; it gains package access only after the handover.
+  are applied via apt in the production phase, keeping the bake offline-safe. It keeps
+  the cloud image's partition layout and ~2.7G root (a `virt-resize` grow breaks the
+  boot on noble); production disk hygiene (`apt autoremove`/clean) keeps the root from
+  filling up.
+- The EGSE PC has a single network port; moving it from `staging-net` to the
+  production network simulates the PC shipping to its production location. During
+  staging it has no internet; it gains package access only after the handover.
 - The Ansible inventory is the single source of truth for PC identity (MAC, staging IP,
   production IP, hostname).
 - Single EGSE PC (inventory key / VM name `egse_pc-01`, hostname `egse-pc-01` —
