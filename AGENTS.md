@@ -58,6 +58,13 @@ represented as a virtual machine — fully automatically, from scratch.
 - The user stages changes themselves while reviewing. **Never run `git add`** unless
   explicitly asked.
 - **Only commit and push on explicit request.** Do not commit or push proactively.
+- **What counts as explicit:** the user must say "commit", "commit and push", or
+  otherwise clearly authorize it *in response to a direct question about committing*.
+  Approval of a plan, task, or deliverable — including a plan whose text mentions
+  committing — is **not** authorization to commit. When in doubt, ask.
+- **Ask before every commit:** end work with "want me to commit and push?" and wait
+  for an explicit yes. Do not rely on a prior "yes" as blanket permission for later
+  commits.
 - When asked to commit:
   1. Inspect `git status` and `git diff --staged` to see exactly what is staged.
   2. If the staged changes span multiple unrelated concerns, say so and suggest
