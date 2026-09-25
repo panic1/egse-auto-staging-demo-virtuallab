@@ -50,9 +50,18 @@ main() {
 
   local pkgs=()
   local pkg
+  local pkg_host
+  # egse_pc_packages is a group-level var (same set for every PC, see
+  # inventory/group_vars/egse_pcs.yml), so read it from any PC in the inventory
+  # rather than hardcoding a specific host.
+  pkg_host="$(list_pcs | head -1)"
+  if [ -z "$pkg_host" ]; then
+    echo "ERROR: no EGSE PCs found in the inventory." >&2
+    exit 1
+  fi
   while read -r pkg; do
     [ -n "$pkg" ] && pkgs+=("$pkg")
-  done < <(labvar_list egse_pc-01 egse_pc_packages)
+  done < <(labvar_list "$pkg_host" egse_pc_packages)
   if [ "${#pkgs[@]}" -eq 0 ]; then
     echo "ERROR: no egse_pc_packages found in the inventory." >&2
     exit 1

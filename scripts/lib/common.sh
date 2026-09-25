@@ -84,14 +84,25 @@ labvar() {
 }
 
 # Like labvar, but for LIST-valued variables: prints one element per line.
+# A scalar value is printed as-is; an optional default is used when the var is
+# absent or ansible-inventory is missing (parity with labvar).
 labvar_list() {
   local host="$1"
   local var="$2"
-  ansible-inventory -i "$REPO_ROOT/inventory/hosts.yml" --host "$host" 2>/dev/null \
-    | python3 -c 'import json,sys
+  local default="${3:-}"
+  local value=""
+  if command -v ansible-inventory >/dev/null 2>&1; then
+    value="$(ansible-inventory -i "$REPO_ROOT/inventory/hosts.yml" --host "$host" 2>/dev/null \
+      | python3 -c 'import json,sys
 d = json.load(sys.stdin)
 v = d.get(sys.argv[1], [])
-print("\n".join(v) if isinstance(v, list) else v)' "$var"
+print("\n".join(v) if isinstance(v, list) else v)' "$var")"
+  fi
+  if [ -z "$value" ]; then
+    printf '%s\n' "$default"
+  else
+    printf '%s\n' "$value"
+  fi
 }
 
 # Generate the shared demo ssh keypair (lab/keys/egse-demo) if it is missing.

@@ -69,10 +69,21 @@ main() {
 
   preflight
 
-  local pcs
-  pcs="$(list_pcs)"
+  local scope pcs
+  scope="$(labvar_list staging-server egse_pc_scope)"
+  if [ -z "$scope" ]; then
+    echo "ERROR: egse_pc_scope is not set (group_vars/all.yml)." >&2
+    echo "  Set it to 'all' to stage every PC, or a list like [egse_pc-02]." >&2
+    exit 1
+  fi
+  if [ "$scope" = all ]; then
+    pcs="$(list_pcs)"
+  else
+    pcs="$(scope_pcs "$scope")"
+  fi
   if [ -z "$pcs" ]; then
-    echo "ERROR: no EGSE PCs found in the inventory." >&2
+    echo "ERROR: no EGSE PCs to stage (egse_pc_scope='$scope')." >&2
+    echo "  Check inventory/hosts.yml (egse_pcs group) and its host_vars files." >&2
     exit 1
   fi
 
@@ -81,7 +92,13 @@ main() {
   demo_pause "start"
 
   local pc
+  local i=0
+  local n
+  n="$(printf '%s\n' "$pcs" | wc -l)"
   for pc in $pcs; do
+    i=$((i + 1))
+    echo
+    echo "====================== Staging PC $i of $n: $pc ======================"
     stage_one "$pc"
   done
 
@@ -103,6 +120,27 @@ preflight() {
     echo "  Run ./scripts/setup.sh online once to build and sync it." >&2
     exit 1
   fi
+}
+
+# Reduce egse_pc_scope to the PCs that actually exist in the inventory, so a
+# typo'd host errors out with guidance instead of silently creating a nameless
+# VM that dnsmasq will not serve.
+scope_pcs() {
+  local scope="$1"
+  local available pc
+  available="$(list_pcs)"
+  while read -r pc; do
+    [ -z "$pc" ] && continue
+    if printf '%s\n' "$available" | grep -qx "$pc"; then
+      printf '%s\n' "$pc"
+    else
+      echo "ERROR: '$pc' in egse_pc_scope is not in the inventory." >&2
+      echo "  Available PCs: $available" >&2
+      echo "  Add it to inventory/hosts.yml (egse_pcs group) with a matching" >&2
+      echo "  inventory/host_vars/egse_pc-0N.yml first." >&2
+      exit 1
+    fi
+  done <<< "$scope"
 }
 
 # The full four-stage flow for one PC.
@@ -137,7 +175,7 @@ stage_one() {
   step "3/4 CONFIGURE — factory configuration on the staging network"
   echo "  Ansible (from the staging server) sets the hostname, regenerates the"
   echo "  ssh keys, and writes the production netplan for the handover."
-  run_pc_playbook egse_pc-staging.yml
+  run_pc_playbook egse_pc-staging.yml "$pc"
   demo_pause "factory configuration"
 
   step "3/4 HANDOVER — re-cabling '$pc' from the staging to the production network"
@@ -155,7 +193,7 @@ stage_one() {
   step "4/4 CONFIGURE + VERIFY — production software, updates, and end-state check"
   echo "  On the production network the PC finally gets its EGSE software stack"
   echo "  and OS updates; the playbook ends by asserting the end state."
-  run_pc_playbook egse_pc-production.yml
+  run_pc_playbook egse_pc-production.yml "$pc"
   demo_pause "verification"
 
   step "Verified: '$pc' is staged, installed, configured, and verified."
@@ -234,18 +272,21 @@ recable_pc() {
 }
 
 # Run a PC playbook from the staging server (the Ansible control node for the
-# PCs — it has a foot in both networks). LC_ALL/LANG are pinned because the
+# PCs — it has a foot in both networks). The run is scoped with --limit to the
+# PC currently being staged: during the sequential demo only that PC is on the
+# relevant network (staging playbook → the PC on the staging net; production
+# playbook → the just-handed-over PC). LC_ALL/LANG are pinned because the
 # cloud-image staging server has no locale configured for non-interactive ssh
 # sessions, which makes Ansible abort. In offline mode the PC's apt is pointed
 # at the bundled repo via extra vars.
 run_pc_playbook() {
-  local play="$1"
+  local play="$1" pc="$2"
   local extra=""
   if [ "$MODE" = offline ]; then
     extra="-e apt_offline=true -e apt_mirror=$APT_REPO_URL"
   fi
   ssh $(ssh_opts) "ops@$STAGING_HOST" \
-    "cd /srv/egse-demo && LC_ALL=C.UTF-8 LANG=C.UTF-8 ansible-playbook ansible/playbooks/$play $extra"
+    "cd /srv/egse-demo && LC_ALL=C.UTF-8 LANG=C.UTF-8 ansible-playbook ansible/playbooks/$play --limit $pc $extra"
 }
 
 main "$@"

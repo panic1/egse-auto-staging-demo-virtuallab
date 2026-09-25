@@ -26,6 +26,22 @@ egse_pc_machine_type: pc
 egse_pc_boot_order: "network,hd"
 egse_pc_name_prefix: "egse_pc-"
 
+# Which EGSE PCs demo.sh stages: 'all' = every PC in the inventory; or a list,
+# e.g. [egse_pc-02] to stage just that one. The default stages one PC; to add a
+# second PC to a running lab, set it to [egse_pc-02] (or all) and run demo.sh
+# again — no setup.sh needed, the dnsmasq reservations are already primed for
+# every PC in the inventory (see hosts.yml). Config, not a flag, so runs stay
+# reproducible.
+#
+# Accepted syntax:
+#   egse_pc_scope: all                 # every PC in the inventory
+#   egse_pc_scope: [egse_pc-01]        # inline list: just egse_pc-01
+#   egse_pc_scope: [egse_pc-01, egse_pc-02]   # inline list: both PCs
+#   egse_pc_scope:                      # block list (same as inline)
+#     - egse_pc-01
+#     - egse_pc-02
+egse_pc_scope: [egse_pc-01]
+
 # Networks. Both are defined by the demo scripts in the system daemon
 # (qemu:///system). The production network is NAT (the machines' "production"
 # network); the staging network is an isolated bridge with no host address.

@@ -1,0 +1,21 @@
+---
+# Identity of egse_pc-02 — the single source of truth the rest of the demo reads.
+# The VM is created with `mac`, PXE install runs on the staging side at
+# `staging_ip`, and after handover the PC lives at static `production_ip`.
+#
+# Adding a 3rd/4th PC is exactly this: a new host under egse_pcs in hosts.yml
+# plus a host_vars file with the same four vars. MACs must be unique and
+# staging_ip must fall inside staging_dhcp_range (group_vars/all.yml).
+
+# MAC the PC VM is created with (must match this entry for dnsmasq to pick it up).
+mac: "52:54:00:00:00:04"
+
+# Linux hostname of the PC. Valid hostname characters are [a-zA-Z0-9-]
+# (no underscores), so the hostname differs from the inventory key / VM name.
+hostname: egse-pc-02
+
+# Address on the isolated staging network (reserved by dnsmasq for this MAC).
+staging_ip: 10.10.0.12
+
+# Static address on the production network, applied after handover.
+production_ip: 10.10.122.22

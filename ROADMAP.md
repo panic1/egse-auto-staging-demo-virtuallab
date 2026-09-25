@@ -396,21 +396,60 @@ Present the working demo to an audience.
 
 ### Task 8: Multiple PC staging
 
-**Status:** `[ ]`
+**Status:** `[x]`
 
 **Work instructions**
 
 - Generalize the inventory-driven provisioning to N PCs (`egse_pc-01`, `egse_pc-02`, …).
-- `demo.sh` loops over the PCs (or `--only egse_pc-0X`); verify each PC's end state.
+- `demo.sh` loops over the PCs; verify each PC's end state.
 
 **Design information**
 
-- TBD.
+- Most of the N-PC machinery was already inventory-driven: `list_pcs()`
+  (scripts/lib/common.sh) enumerates hosts by `egse_pc_name_prefix`, the dnsmasq
+  reservation template loops `groups['egse_pcs']`, the PC playbooks target
+  `hosts: egse_pcs` with a per-host `ansible_host` derived from each PC's own
+  `staging_ip`/`production_ip`, teardown globs `egse_pc-*`, and VM/disk names are
+  the PC's inventory key. The only real gap was `demo.sh`'s playbook invocation
+  running against the whole `egse_pcs` group.
+- The demo stages PCs **sequentially**: for each PC in the scope the full
+  four-stage flow runs (stage → install → factory config → handover → production
+  config + verify). The inventory defines **two PCs** (`egse_pc-01`,
+  `egse_pc-02`, both in `hosts.yml` with identities in their `host_vars/`
+  files); `egse_pc_scope` in `group_vars/all.yml` defaults to `[egse_pc-01]`.
+  Because both PCs are in the inventory, `setup.sh` primes dnsmasq with **both**
+  DHCP reservations in one run — staging a second PC later needs no re-setup,
+  only a scope change. Adding further PCs is a new host entry in `hosts.yml`
+  plus a matching `host_vars/egse_pc-0N.yml` (MAC, hostname, staging_ip,
+  production_ip) — nothing else.
 
 **Design decisions**
 
-- A single golden image is reused for all PCs; identity differs via the inventory
-  (MAC, staging/production IP, hostname).
+- **No `--only` flag.** PC selection is config, not a flag: `egse_pc_scope` in
+  `group_vars/all.yml` names the PCs a `demo.sh` run stages (`[egse_pc-01]` by
+  default, `all` for every PC, or a list). The original `--only egse_pc-0X`
+  clause was dropped (config-over-flags, AGENTS.md).
+- **Playbooks are scoped by network state, per run.** `run_pc_playbook` passes
+  `--limit "$pc"`: during the sequential demo exactly one PC is on the relevant
+  network at a time (staging playbook → the PC on the staging net; production
+  playbook → the just-handed-over PC). Because the playbooks target
+  `hosts: egse_pcs` with per-host `ansible_host`, an ad-hoc run without a limit
+  still updates all PCs already on the production network.
+- **A single golden image is reused for all PCs**; identity differs via the
+  inventory (MAC, staging/production IP, hostname).
+- **`fetch_dependencies.sh` reads the group-level `egse_pc_packages` from the
+  first listed PC** (via `list_pcs`) instead of hardcoding `egse_pc-01`, so the
+  offline bundle no longer breaks if that specific host is renamed/removed.
+- **`demo.sh` stages a config-driven subset (`egse_pc_scope`)** rather than
+  always every PC: `[egse_pc-01]` (default) stages one PC, `all` stages the
+  whole inventory, or a list like `[egse_pc-02]` stages only those. This lets a
+  presenter add a PC to an already running lab (e.g. stage `egse_pc-02` while
+  `egse_pc-01` keeps running on the production network) without a `--only` flag
+  and without re-running `setup.sh` — both PCs are in the inventory, so their
+  dnsmasq reservations are primed by the initial setup. Scope by config, not by
+  flag. A scoped host not in the inventory is a clear error, not a silent no-op.
+  (Real-world note: production PCs aren't disposable VMs — the scope exists so a
+  live, already-staged PC is never wiped by a re-run of the demo.)
 
 ---
 

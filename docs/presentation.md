@@ -40,7 +40,10 @@ Everything is a VM on one laptop, but the vocabulary is the real-world analogy.
    demo_pause: true            # press Enter between stages
    open_terminal_on_setup: true
    open_terminal_on_demo: true
+   egse_pc_scope: [egse_pc-01] # one PC; 'all' or [egse_pc-02] for more
    ```
+   To rehearse a single PC, leave `egse_pc_scope: [egse_pc-01]`; set it to `all`
+   to stage every PC in one run.
 3. Decide online vs. offline (offline section below).
 4. Have `virsh console egse_pc-01` ready as the "window into the machine"
    during the PXE install — it shows the deploy tool working.
@@ -65,6 +68,12 @@ Point at the two networks concept (or the `staging-server` VM in the VM manager)
 > it stays the control point the whole time."
 
 Run `./scripts/demo.sh`.
+
+`demo.sh` stages the PCs named by `egse_pc_scope` (default `[egse_pc-01]`)
+through the full lifecycle — the same inventory that defines their MACs and
+addresses, so repeatability is the point. To stage the second PC (`egse_pc-02`)
+in a later run, set `egse_pc_scope: [egse_pc-02]` (or `all`) — no `setup.sh`
+needed, its dnsmasq reservation is already primed.
 
 ---
 
@@ -133,6 +142,9 @@ packages  = git, curl, htop, python3-requests
 updates   = up to date
 ```
 
+(The same summary prints for every PC in the run's scope; set `egse_pc_scope`
+to `all` (or `[egse_pc-02]`) in a later run to stage the second PC too.)
+
 > "Bare machine → configured, verified machine. No manual steps."
 
 ---
@@ -147,9 +159,10 @@ updates   = up to date
   updates). Mirrors real commissioning.
 - **Control node that never moves.** The staging server bridges both networks,
   so Ansible always runs from the same place.
-- **Config over flags.** Everything (IPs, MACs, sizes, demo pacing) lives in the
-  Ansible inventory — the single source of truth. No CLI flags, so every run is
-  reproducible.
+- **Config over flags.** Everything (IPs, MACs, sizes, demo pacing, **which PCs
+  are staged**) lives in the Ansible inventory — the single source of truth. No
+  CLI flags, so every run is reproducible. `egse_pc_scope` picks the PCs for a
+  run; `demo_pause`/`open_terminal_on_demo` control pacing.
 - **Idempotent.** Setup/teardown can be re-run from a clean state.
 
 ## Offline variant (Milestone 3)
@@ -183,8 +196,11 @@ show.
 - **"Doesn't dnsmasq leak DHCP onto the production network?"** — No: it is
   bound to the staging interface only (`interface=…` + `bind-interfaces`), and
   the production network has no DHCP at all.
-- **"What if I want more PCs?"** — Add an entry to the inventory; the PXE
-  reservations, DHCP, and the demo loop are all inventory-driven.
+- **"What if I want more PCs?"** — Add an entry to the inventory (`hosts.yml` +
+  a `host_vars/egse_pc-0N.yml`); the PXE reservations, DHCP, and the demo loop
+  are all inventory-driven. To bring up just the new one without touching a PC
+  already running on production, set `egse_pc_scope: [egse_pc-0N]` — machines
+  outside the scope are left alone.
 - **"Is this production-grade?"** — No, it's a **baseline example**: the
   concepts (golden image, network PXE install, two-phase config, verify) are
   the engineering pattern; the real system would harden this (signing, GPG,

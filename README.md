@@ -68,6 +68,12 @@ The demo runs entirely from `scripts/`, driven by the inventory:
 3. **`teardown.sh`** destroys the VMs and networks and cleans up lab artifacts
    (keeping the cache/golden image unless `teardown_clean: true`).
 
+**Typical run times** (measured on the reference host, online, `demo_pause: false`):
+`setup.sh` ≈ **0.5 min** (incremental re-run); `demo.sh` ≈ **4 min per PC** —
+**≈ 8 min** for both PCs. The network install cycle (image download + disk
+write + first boot) dominates; an idempotent re-setup of an already-provisioned
+lab is faster.
+
 Every script is documented to explain the concept it demonstrates. Run the demo
 interactively with `demo_pause: true` (press-Enter narration) and, optionally,
 `open_terminal_on_demo: true` for live show-and-tell ssh terminals into the PC.
@@ -119,6 +125,26 @@ The demo is interactive by default: `demo_pause: true` pauses between stages
 for narration (press Enter), and `open_terminal_on_setup` / `open_terminal_on_demo`
 open live show-and-tell ssh terminals into the machines. Set them to `false`
 in `inventory/group_vars/all.yml` for an unattended run.
+
+**Staging a subset.** `demo.sh` stages the PCs named by `egse_pc_scope`
+(`group_vars/all.yml`): the default `[egse_pc-01]` stages one PC, `all` stages
+every PC, or a list like `[egse_pc-02]` stages just those. PCs outside the scope
+are **never touched**: their VMs, disks, and configuration stay exactly as they
+are. This is config, not a flag, so the run stays reproducible. A host in the
+scope that is not in the inventory aborts with a clear error.
+
+**Add a PC to a running lab.** Say `egse_pc-01` is already staged and running on
+the production network and you want to bring up `egse_pc-02`:
+
+1. Set `egse_pc_scope: [egse_pc-02]` in `inventory/group_vars/all.yml`.
+2. Run `./scripts/demo.sh` — it stages only `egse_pc-02`; `egse_pc-01` keeps
+   running throughout.
+3. Revert `egse_pc_scope` to `[egse_pc-01]` (or `all`) before the next run.
+
+No `setup.sh` is needed between PC-01 and PC-02: both PCs are in the inventory,
+so the initial `setup.sh` already primed dnsmasq with **both** DHCP
+reservations. The scope change is the only thing that decides which PC a
+`demo.sh` run stages.
 
 **Offline demo.** Only the demo has an offline mode — setup stays online. After
 an online `setup.sh` (which primes the offline apt repo), you can disconnect the
@@ -210,9 +236,15 @@ Nitty-gritty details. Read this section when you need specifics.
   staging it has no internet; it gains package access only after the handover.
 - The Ansible inventory is the single source of truth for PC identity (MAC, staging IP,
   production IP, hostname).
-- Single EGSE PC (inventory key / VM name `egse_pc-01`, hostname `egse-pc-01` —
-  hostnames allow no underscores); adding more PCs only requires new inventory
-  entries.
+- The inventory defines two EGSE PCs (`egse_pc-01`, `egse_pc-02`; VM names
+  `egse_pc-0N`, Linux hostnames `egse-pc-0N` — hostnames allow no underscores).
+  `demo.sh` stages the PCs named by `egse_pc_scope` (default `[egse_pc-01]`).
+  The dnsmasq reservations, Ansible runs, demo loop, and teardown all scale from
+  the inventory automatically.
+- `demo.sh` only ever touches the PCs in its scope (`egse_pc_scope`); PCs
+  outside it — e.g. one already staged and running on the production network —
+  are never deleted or re-staged. The scope is config in the inventory, never a
+  flag.
 
 ### Presentation
 

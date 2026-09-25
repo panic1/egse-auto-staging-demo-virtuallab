@@ -209,6 +209,10 @@ updates   = up to date
 
 Bare machine → configured, verified machine. No manual steps.
 
+(Repeated for **every PC in the run's scope** — one by default, set
+`egse_pc_scope` to `all` (or `[egse_pc-02]`) for more — each with its own MAC,
+addresses, and hostname from `inventory/host_vars/`.)
+
 ---
 
 <!-- header: Offline -->
@@ -230,8 +234,9 @@ The offline scenario is a ready-made backup — no mode flag.
 ## Key concepts
 
 - **Control node that never moves** — the staging server bridges both networks
-- **Config over flags** — everything (IPs, MACs, sizes, pacing) lives in the
-  Ansible inventory; no CLI flags → reproducible runs
+- **Config over flags** — everything (IPs, MACs, sizes, pacing, which PCs are
+  staged via `egse_pc_scope`) lives in the Ansible inventory; no CLI flags →
+  reproducible runs
 - **Idempotent** — setup/teardown re-runnable from a clean state
 - **Teaching material** — every script is documented to explain its concept
 
