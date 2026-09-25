@@ -1,14 +1,12 @@
 ---
 # Connection and network defaults for the EGSE PCs.
-ansible_user: admin
-ansible_ssh_private_key_file: "{{ playbook_dir }}/../lab/keys/egse-demo"
+ansible_user: ops
+ansible_ssh_private_key_file: "{{ playbook_dir }}/../../lab/keys/egse-demo"
 
 # Network defaults shared by all EGSE PCs (per-PC addresses are in host_vars/).
 staging_gateway: 10.10.0.2        # staging server on the isolated staging net
-production_gateway: 192.168.122.1 # host's libvirt NAT gateway
-production_dns: 192.168.122.1
 
 # Where the EGSE PC fetches packages during the production phase. The online
-# default is the Ubuntu archive; offline mode (./scripts/setup.sh --offline)
-# points this at the bundled apt repo served by the staging server.
+# default is the Ubuntu archive; offline mode (./scripts/setup.sh) points this
+# at the bundled apt repo served by the host.
 apt_mirror: "http://archive.ubuntu.com/ubuntu"

@@ -11,5 +11,5 @@ hostname: egse_pc-01
 # Address on the isolated staging network (reserved by dnsmasq for this MAC).
 staging_ip: 10.10.0.11
 
-# Static address on the production (host NAT) network, applied after handover.
-production_ip: 192.168.122.21
+# Static address on the production network, applied after handover.
+production_ip: 10.10.122.21

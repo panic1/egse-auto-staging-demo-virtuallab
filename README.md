@@ -55,9 +55,17 @@ Nitty-gritty details. Read this section when you need specifics.
 
 - Ubuntu 24.04 with KVM/libvirt (hardware virtualization enabled).
 - Packages: `qemu-kvm`, `libvirt-daemon-system`, `virtinst`, `libguestfs-tools`,
-  `cloud-image-utils`, `openssh-client`, `gnome-terminal` (demo terminals).
-- libvirt `default` NAT network active; its DHCP range must not collide with the EGSE
-  PCs' static production addresses.
+  `cloud-image-utils`, `openssh-client`, `gnome-terminal` (demo terminals) — install
+  them with `sudo ./scripts/install_prereqs.sh`.
+- The demo uses the **system libvirt daemon** (`qemu:///system`) — the session daemon
+  cannot create the bridge networks the demo needs. `install_prereqs.sh` adds your user
+  to the `libvirt` and `kvm` groups (re-login or `newgrp libvirt` after).
+- VM disks and seed ISOs are created as volumes in libvirt's `default` storage pool
+  (`/var/lib/libvirt/images`), so the `libvirt-qemu` user can access them with **no
+  permission changes** to this repo or your home directory.
+- The demo defines its own two networks in the system daemon (`production-net` on
+  `10.10.122.0/24` — **no DHCP**, every device static — and `staging-net` on
+  `10.10.0.0/24`); it does not touch the host's `default` network.
 - Network: the demo runs online when a stable network is reachable and falls back to a
   primed `lab/cache/` when it is not (see Core Concepts). Fetching the cloud image and
   packages requires internet at least once.
@@ -66,9 +74,9 @@ Nitty-gritty details. Read this section when you need specifics.
 
 - The staging server and the EGSE PC are stand-ins for their real industrial
   counterparts: the isolated `staging-net` plays the factory/benchtop network, and the
-  host's NAT network plays the production network.
+  NAT `production-net` plays the production network.
 - **Staging and production use non-overlapping ranges** (`10.10.0.0/24` vs
-  `192.168.122.0/24`): the staging server bridges both, so overlap would confuse its
+  `10.10.122.0/24`): the staging server bridges both, so overlap would confuse its
   routing.
 - The EGSE PC uses BIOS firmware (not UEFI/Secure Boot).
 - The EGSE PC's NIC is e1000 and its disk is IDE, so the tiny busybox deploy initramfs

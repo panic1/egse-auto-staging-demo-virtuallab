@@ -3,12 +3,15 @@
 #
 # The staging server bridges two networks and each must use a distinct range
 # so its routing stays unambiguous:
-#   - eth0 (production / host NAT, 192.168.122.0/24) -> static .2
-#   - eth1 (isolated staging net, 10.10.0.0/24)      -> static .2
-ansible_host: 192.168.122.2
-ansible_user: admin
-ansible_ssh_private_key_file: "{{ playbook_dir }}/../lab/keys/egse-demo"
+#   - eth0 (production / NAT)       -> static .2
+#   - eth1 (isolated staging net)   -> static .2
+ansible_host: 10.10.122.2
+ansible_user: ops
+ansible_ssh_private_key_file: "{{ playbook_dir }}/../../lab/keys/egse-demo"
 
-# Fixed addresses of the staging server.
-mgmt_ip: 192.168.122.2      # production side (eth0); also hosts the apt repo
-staging_ip: 10.10.0.2       # isolated staging side (eth1); dnsmasq/PXE here
+# Fixed addresses and MACs of the staging server. The MACs are used by
+# setup_virtuallab.sh so the guest's cloud-init netplan can match its NICs.
+mgmt_ip: 10.10.122.2      # production side (eth0); also hosts the apt repo
+staging_ip: 10.10.0.2     # isolated staging side (eth1); dnsmasq/PXE here
+mgmt_mac: "52:54:00:00:00:02"
+staging_mac: "52:54:00:00:00:03"

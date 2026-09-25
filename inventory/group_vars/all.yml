@@ -1,0 +1,64 @@
+---
+# Global lab configuration — the single source of truth for VM sizing, network
+# layout, and install assets. The demo scripts read these via ansible-inventory
+# (see scripts/lib/common.sh, labvar()); Ansible uses the same values when it
+# manages the machines.
+
+# VM sizes are deliberately small — the demo needs no performance.
+staging_vm_memory_mb: 1024
+staging_vm_vcpus: 1
+staging_vm_disk_gb: 10
+egse_pc_vm_memory_mb: 1024
+egse_pc_vm_vcpus: 1
+egse_pc_vm_disk_gb: 8
+
+# VM creation.
+os_variant: ubuntu24.04
+nic_model: virtio
+egse_pc_boot_order: "network,hd"
+egse_pc_name_prefix: "egse_pc-"
+
+# Networks. Both are defined by the demo scripts in the system daemon
+# (qemu:///system). The production network is NAT (the machines' "production"
+# network); the staging network is an isolated bridge with no host address.
+# Dedicated bridge names avoid colliding with the host's standard 'default'
+# network (virbr0 on 192.168.122.1) — which is why the production subnet is
+# deliberately NOT 192.168.122.0/24.
+#
+# The production network has NO DHCP: every device on it is pinned to a static
+# address (staging server eth0, and each PC after handover). DHCP exists only
+# on the isolated staging network, served by dnsmasq on the staging server for
+# the PXE install.
+staging_network: staging-net
+production_network: production-net
+production_network_bridge: virbr-prod
+staging_subnet: 10.10.0.0/24
+production_subnet: 10.10.122.0/24
+
+# Gateways/DNS (host side of the production NAT network).
+production_gateway: 10.10.122.1
+production_dns: 10.10.122.1
+
+# libvirt connection the demo uses. The system daemon (qemu:///system) is
+# required — the session daemon cannot create the bridge networks the demo
+# needs. VM disks and seed ISOs are created as volumes in the 'default'
+# storage pool (/var/lib/libvirt/images) so the libvirt-qemu user can access
+# them without touching this repo's permissions.
+libvirt_uri: qemu:///system
+storage_pool: default
+
+# Install assets.
+cloud_image_url: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+
+# Open a show-and-tell ssh terminal into the staging server once it is up
+# (see scripts/lib/common.sh open_ssh_terminal). Off by default so setup stays
+# quiet; set to true to get a live terminal after the server is reachable.
+open_terminal_on_setup: true
+
+# Remove cache, keys, and golden image on teardown. Default true keeps the host
+# clean after a demo; set false to preserve the offline-backup assets.
+#
+# REMINDER: during repeated setup/teardown testing, set this to false so the
+# cache and golden image survive each teardown (otherwise every run re-fetches
+# them). Remember to revert it to your intended value before the real demo.
+teardown_clean: true

@@ -151,8 +151,12 @@ Present the working demo to an audience.
 
 **Design information**
 
-- Host: Ubuntu 24.04 with KVM/libvirt. libvirt `default` NAT network is the
-  "production" network; a custom isolated network is `staging-net`.
+- Host: Ubuntu 24.04 with KVM/libvirt. Everything runs in the system daemon
+  (`qemu:///system` — the session daemon cannot create the bridge networks the demo
+  needs): the NAT `production-net` network and the isolated `staging-net` are both defined
+  there by the scripts. VM disks and seed ISOs are created as volumes in libvirt's
+  `default` storage pool, so `libvirt-qemu` can access them without touching this
+  repo's permissions.
 - Staging server: Ubuntu 24.04 cloud image, two NICs. PC: empty disk, e1000 NIC, IDE
   disk, BIOS firmware, PXE boot (network then disk).
 - Golden image built with libguestfs (`virt-customize`); deployed by a tiny busybox
@@ -163,10 +167,15 @@ Present the working demo to an audience.
 **Design decisions**
 
 - **Staging and production use non-overlapping ranges** (`10.10.0.0/24` vs
-  `192.168.122.0/24`): the staging server bridges both networks, so overlapping ranges
-  would confuse its routing.
-- **The staging server gets a static production-side address** (`192.168.122.2`) so it
+  `10.10.122.0/24`): the staging server bridges both networks, so overlapping ranges
+  would confuse its routing. The production range deliberately avoids
+  `192.168.122.0/24` (the system daemon's `virbr0`/`default` network owns that on many
+  hosts).
+- **The staging server gets a static production-side address** (`10.10.122.2`) so it
   is a stable target for Ansible and the apt repo.
+- **The production network has NO DHCP** — every device on it is pinned to a static
+  address (staging server eth0, and each PC after handover). DHCP exists only on the
+  isolated staging network, served by dnsmasq for the PXE install.
 - **The PC has a single network port**, re-cabled from `staging-net` to the host network
   at handover, simulating the PC shipping to its production location. It is configured
   in two phases (factory config on the staging net, then software/updates on the
@@ -181,7 +190,7 @@ Present the working demo to an audience.
 
 ### Task 3: Setup and teardown scripts
 
-**Status:** `[ ]`
+**Status:** `[x]`
 
 **Work instructions**
 
@@ -193,14 +202,45 @@ Present the working demo to an audience.
 
 **Design information**
 
-- VMs created with `virt-install`; lifecycle via `virsh`. PC VM gets its MAC from the
-  inventory. Staging server boots from a cloud image with a cloud-init seed.
-- The PC playbooks run from the staging server, so `setup.sh` syncs the repo (inventory
-  + playbooks + `lab/keys`) to it.
+- `staging-net`: an isolated libvirt network (`<forward mode='none'/>`), deliberately
+  L2-only — the host has no address on it, so PCs are only reachable via the staging
+  server.
+- Staging server: Ubuntu 24.04 cloud image (cached, offline-first), copied + resized to
+  10G (cloud-init `growpart` expands the root). A NoCloud seed provides the `ops`
+  user, the shared ssh key, and a static netplan: eth0 = `10.10.122.2` on the
+  production network, eth1 = `10.10.0.2` on `staging-net`. Sized small (1 vCPU, 1 GiB
+  RAM) — the demo needs no performance.
+- `setup.sh`: detect mode → golden image (if the script exists) → `setup_virtuallab.sh`
+  → rsync the repo to `/srv/egse-demo` on the staging server → run `staging.yml`.
+- `teardown.sh`: destroys the staging server and any `egse_pc-*` domains plus
+  `staging-net`; keeps cache/keys/golden image unless `--clean`.
 
 **Design decisions**
 
-- TBD.
+- **Fixed MACs + static addresses via cloud-init network-config** for both staging
+  server NICs — no dependency on libvirt DHCP reservations.
+- **The staging network carries no host address** (pure L2): the PCs cannot be reached
+  from the host at all, only via the staging server.
+- The repo is **rsynced to the staging server** (`/srv/egse-demo`) so it is the Ansible
+  control node for the PCs; VM disks and ISOs are excluded.
+- `teardown.sh` removes the cache, keys, and golden image **when `teardown_clean` is
+  true (default)** — config-driven, no `--clean` flag. Set `teardown_clean: false` to
+  keep them (e.g. so the offline backup stays primed across repeated teardowns).
+- **Config-over-flags**: demo behavior is driven by the inventory config, never by
+  command-line flags, so every run is reproducible. Flags remain only on
+  administrative tools (`install_prereqs.sh --uninstall/--help`). `demo.sh` follows
+  the same rule.
+- `install_prereqs.sh` **tracks what it changes** (`lab/install_prereqs.state`: packages
+  actually installed, groups actually added) so `--uninstall` undoes exactly that and
+  never removes software that was already on the machine.
+- **The lab user is `ops`**: the name must not match any group on the image, because
+  cloud-init's `useradd` fails when the same-named group already exists (`USERGROUPS_ENAB
+  yes`). `admin` (gid 110) and `operator` (gid 37) both collide; `ops` matches no group.
+  This applies to the golden image / PC user too (Task 4).
+- **All VM config lives in the Ansible inventory** (group_vars/all.yml + staging.yml +
+  egse_pcs.yml): sizes, MACs, addresses, network names, os-variant, NIC model. The
+  scripts read it via `labvar()` in `common.sh` (`ansible-inventory --host ...`), so the
+  inventory stays the single source of truth and nothing is hardcoded in the scripts.
 
 ---
 
@@ -229,6 +269,8 @@ Present the working demo to an audience.
 - **The golden image bake installs no packages** (the cloud image already ships
   openssh-server): all tools/libraries are applied via apt in the production phase.
   This keeps the bake fully offline-safe.
+- **Small VM sizes throughout** — the demo needs no performance: staging server and EGSE
+  PC are 1 vCPU / 1 GiB RAM; the golden image and both VM disks are ~8–10 GB.
 
 ---
 
@@ -301,7 +343,7 @@ Present the working demo to an audience.
 - **Auto-detect, no `--offline` flag**: online uses the network (and primes the cache);
   offline falls back to `lab/cache/` automatically. The offline scenario is a ready-made
   backup.
-- The bundled apt repo is served from the host (`192.168.122.1`) in offline mode so it
+- The bundled apt repo is served from the host (`10.10.122.1`) in offline mode so it
   is reachable by both the staging server (own provisioning) and the PC (production
   phase).
 

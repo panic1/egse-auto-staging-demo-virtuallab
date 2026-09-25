@@ -20,7 +20,10 @@ represented as a virtual machine — fully automatically, from scratch.
 - `README.md` — project documentation. Keep in sync with the actual demo.
 - `ROADMAP.md` — the tracker. Update it whenever work starts or finishes.
 - `inventory/` — Ansible inventory: the **single source of truth** for machine identity
-  (MAC, staging/production IP, hostname). Per-PC data in `inventory/host_vars/`.
+  (MAC, staging/production IP, hostname) **and VM config** (sizing, networks,
+  addresses, behavior flags like `open_terminal_on_setup` in `group_vars/all.yml`).
+  The bash scripts read it via `labvar()` in `scripts/lib/common.sh`; per-PC data in
+  `inventory/host_vars/`.
 - `ansible/` — playbooks and roles (staging server + PC). PC playbooks pick the active
   address (`staging_ip` vs `production_ip`) based on which network the PC is on.
 - `scripts/` — demo lifecycle scripts (setup/teardown/generate/fetch/demo).
@@ -40,6 +43,9 @@ represented as a virtual machine — fully automatically, from scratch.
 6. The VM **stands in for an industrial PC** — script names, docs, and output should
    reflect the real-world analogy (stage → install → configure → verify), not generic
    "VM provisioning" language, so the demo stays coherent.
+7. **Config over flags**: demo behavior is config-driven via the inventory
+   (`group_vars/all.yml`), never via command-line flags, so runs are reproducible.
+   Flags only on administrative tools (e.g. `install_prereqs.sh --uninstall`).
 
 ## Definition of done
 
