@@ -362,7 +362,7 @@ Present the working demo to an audience.
 
 ### Task 7: Offline fallback
 
-**Status:** `[ ]`
+**Status:** `[x]`
 
 **Work instructions**
 
@@ -376,12 +376,18 @@ Present the working demo to an audience.
 
 **Design information**
 
-- TBD.
+- `is_online()`/`detect_mode()` were already in `lib/common.sh` (Task 3/4); `demo.sh`
+  reads the mode once at startup and drives the PC's apt source from it.
+- The PC's `production.yml` writes a flat-repo apt source (`deb [trusted=yes] ... ./`)
+  when `apt_offline` is true (passed by `demo.sh` as an extra var), and the normal
+  component sources otherwise. The `verify.yml` "nothing upgradable" assertion holds
+  because apt only considers packages the (bounded) repo offers.
 
 **Design decisions**
 
 - **Auto-detect, no `--offline` flag**: online uses the network; offline falls back to
-  the bundled apt repo automatically. The offline scenario is a ready-made backup.
+  the bundled apt repo automatically. `demo.sh` passes `apt_offline`/`apt_mirror` as
+  Ansible extra vars derived from the detected mode — config-driven, not a user flag.
 - **Demo-only offline**: setup (golden image bake, staging server provisioning) remains
   online-only; only the PC's production software install is served offline, from the
   staging server (`apt_repo_url`), not the host.

@@ -72,6 +72,13 @@ cloud_image_url: "https://cloud-images.ubuntu.com/noble/current/noble-server-clo
 apt_repo_dir: lab/apt-repo
 apt_repo_url: "http://10.10.122.2/apt"
 
+# Demo mode (auto-detected by demo.sh, see scripts/lib/common.sh detect_mode):
+#   apt_offline - true -> the PC's production phase installs from the bundled
+#                 apt repo (apt_repo_url) instead of archive.ubuntu.com
+#                 (apt_mirror). demo.sh passes this as an extra var when it
+#                 detects the network is down; the inventory default is online.
+apt_offline: false
+
 # The PXE deploy tool is built from a pinned Ubuntu kernel + its modules
 # (extracted from these .debs by scripts/generate_golden_image.sh). Pinning a
 # specific version keeps the deploy tool reproducible and independent of the

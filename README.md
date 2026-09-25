@@ -122,9 +122,10 @@ in `inventory/group_vars/all.yml` for an unattended run.
 
 **Offline demo.** Only the demo has an offline mode — setup stays online. After
 an online `setup.sh` (which primes the offline apt repo), you can disconnect the
-network and `demo.sh` still works: the PC's production phase installs the EGSE
-software stack from the bundled repo (`lab/apt-repo/`) served by the staging
-server, instead of from `archive.ubuntu.com`.
+network and `demo.sh` still works: it auto-detects the missing network and the
+PC's production phase installs the EGSE software stack from the bundled repo
+(`lab/apt-repo/`) served by the staging server, instead of from
+`archive.ubuntu.com`.
 
 ### 4. Tear down
 

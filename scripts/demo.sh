@@ -44,10 +44,16 @@ PC_DISK_BUS="$(labvar staging-server egse_pc_disk_bus ide)"
 PC_MACHINE="$(labvar staging-server egse_pc_machine_type pc)"
 BOOT_ORDER="$(labvar staging-server egse_pc_boot_order network,hd)"
 OPEN_TERMINAL="$(labvar staging-server open_terminal_on_demo false | tr '[:upper:]' '[:lower:]')"
+APT_REPO_URL="$(labvar staging-server apt_repo_url http://10.10.122.2/apt)"
 
 # Boot order after the network install: disk first, network as fallback, so a
 # reboot never re-triggers the PXE installer.
 NORMAL_BOOT="hd,network"
+
+# Demo mode (auto-detected, no flag — see lib/common.sh). Online: the PC's
+# production phase uses the Ubuntu archive. Offline: it uses the bundled apt
+# repo served by the staging server (apt_repo_url).
+MODE="$(detect_mode)"
 
 ssh_opts() {
   echo "-i $SSH_KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
@@ -55,6 +61,11 @@ ssh_opts() {
 
 main() {
   require_commands virsh virt-install virt-xml ansible-inventory python3 ssh curl
+
+  echo "Mode: $MODE"
+  if [ "$MODE" = offline ]; then
+    echo "  Offline: the PC's software will come from the bundled apt repo ($APT_REPO_URL)."
+  fi
 
   preflight
 
@@ -85,6 +96,11 @@ preflight() {
   if ! curl -sfI "http://$STAGING_HOST/golden.img" >/dev/null; then
     echo "ERROR: the staging server is not serving golden.img." >&2
     echo "  Run ./scripts/setup.sh first." >&2
+    exit 1
+  fi
+  if [ "$MODE" = offline ] && ! curl -sf "http://$STAGING_HOST/apt/Packages.gz" >/dev/null; then
+    echo "ERROR: offline demo needs the bundled apt repo served by the staging server." >&2
+    echo "  Run ./scripts/setup.sh online once to build and sync it." >&2
     exit 1
   fi
 }
@@ -220,11 +236,16 @@ recable_pc() {
 # Run a PC playbook from the staging server (the Ansible control node for the
 # PCs — it has a foot in both networks). LC_ALL/LANG are pinned because the
 # cloud-image staging server has no locale configured for non-interactive ssh
-# sessions, which makes Ansible abort.
+# sessions, which makes Ansible abort. In offline mode the PC's apt is pointed
+# at the bundled repo via extra vars.
 run_pc_playbook() {
   local play="$1"
+  local extra=""
+  if [ "$MODE" = offline ]; then
+    extra="-e apt_offline=true -e apt_mirror=$APT_REPO_URL"
+  fi
   ssh $(ssh_opts) "ops@$STAGING_HOST" \
-    "cd /srv/egse-demo && LC_ALL=C.UTF-8 LANG=C.UTF-8 ansible-playbook ansible/playbooks/$play"
+    "cd /srv/egse-demo && LC_ALL=C.UTF-8 LANG=C.UTF-8 ansible-playbook ansible/playbooks/$play $extra"
 }
 
 main "$@"

@@ -85,13 +85,28 @@
     state: started
     enabled: true
 
-# --- HTTP server (golden image + apt repo) ---------------------------------
+# --- HTTP server (golden image + offline apt repo) ---------------------------
 
 - name: Symlink the golden image into the http root
   ansible.builtin.file:
     src: "{{ demo_dir }}/lab/golden.img"
     dest: "{{ http_root }}/golden.img"
     state: link
+
+# The bundled offline apt repo (built by scripts/fetch_dependencies.sh and
+# rsynced with the repo) is served to the PCs at http://<staging>/apt/. It is
+# optional — it only exists after the offline dependencies were fetched.
+- name: Check whether the bundled offline apt repo is present
+  ansible.builtin.stat:
+    path: "{{ demo_dir }}/lab/apt-repo/Packages.gz"
+  register: apt_repo_stat
+
+- name: Serve the bundled offline apt repo to the PCs
+  ansible.builtin.file:
+    src: "{{ demo_dir }}/lab/apt-repo"
+    dest: "{{ http_root }}/apt"
+    state: link
+  when: apt_repo_stat.stat.exists
 
 - name: Write the HTTP server systemd unit
   ansible.builtin.template:

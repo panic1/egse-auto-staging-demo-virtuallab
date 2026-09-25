@@ -6,9 +6,14 @@
 - name: Point apt at the configured mirror and drop the default Ubuntu sources
   ansible.builtin.copy:
     content: |
+      {% if apt_offline %}
+      # Offline demo: the bundled apt repo served by the staging server.
+      deb [trusted=yes] {{ apt_mirror }} ./
+      {% else %}
       deb {{ apt_mirror }} noble main universe restricted multiverse
       deb {{ apt_mirror }} noble-updates main universe restricted multiverse
       deb {{ apt_mirror }} noble-security main universe restricted multiverse
+      {% endif %}
     dest: /etc/apt/sources.list
     mode: "0644"
 
