@@ -44,6 +44,7 @@ To commission one today:
 - Verify it actually works
 
 …for **every single machine**. Slow, error-prone, not repeatable.
+…then there is keeping those individual machines **up-to-date** with changing software releases
 
 ---
 
@@ -53,29 +54,38 @@ To commission one today:
 > installed over the network; configuration is applied in **two phases**
 > (factory, then production); and the result is **verified**.
 
-No technician, no USB stick, no manual steps. Repeatable, inventory-driven.
+No USB stick, no disk clone, no manual steps, automatic updates, in-sync configurations. Repeatable, inventory-driven.
 
 ---
 
 ## The lab
 
 ```
-   production-net (NAT, no DHCP)        staging-net (isolated)
-   10.10.122.0/24                       10.10.0.0/24
-   ┌──────────────┐                     ┌──────────────┐
-   │  staging     │  eth0 ─────┐   ┌──── eth1          │
-   │  server      │   .2       │   │    .2             │
-   │  (control    │            │   │                   │
-   │   node)      │            │   │                   │
-   └──────┬───────┘            │   │                   │
-          │  eth0/eth1  static │   │                   │
-          └────────────────────┴───┘                   │
-                                                        │
-   ┌──────────────┐              ┌─────────────────────┘
-   │  EGSE PC     │              │
-   │  10.10.122.21 (after)  ◄───┘ 10.10.0.11 (during)
-   └──────────────┘   one NIC, re-cabled at handover
+ ┌──────────────────┐                            ┌──────────────────┐
+ │  production-net  │                            │   staging-net    │
+ │  10.10.122.0/24  │                            │   10.10.0.0/24   │
+ └─────────┬────────┘                            └─────────┬────────┘
+   eth0 .2 └────────────┐                   ┌──────────────┘ eth1 .2
+                        │                   │
+                  ┌─────┴───────────────────┴─────┐
+                  │         staging server        │
+                  │         (control node)        │
+                  └───────────────────────────────┘
+             ┌─────────────────────────────────────────┐
+             │                 EGSE PC                 │
+             │      one NIC, re-cabled at handover     │
+             │    .11 on staging-net  during install   │
+             │  .21 on production-net  after handover  │
+             └─────────────────────────────────────────┘
 ```
+
+---
+
+## The lab 2
+
+- The staging server bridges both networks.
+- the PC starts on the isolated **staging-net** and is mmanually re-cabled to **production-net** at handover.
+- The staging server deploys a **DHCP server** on the staging network only. (DANGER)
 
 ---
 
@@ -86,8 +96,8 @@ No technician, no USB stick, no manual steps. Repeatable, inventory-driven.
 | Freshly delivered industrial PC | a bare **VM** |
 | The bench that preps PCs | the **staging server** VM |
 | Factory/bench network | **staging-net** (isolated) |
-| Plant production network | **production-net** (NAT) |
-| Shipping the PC | re-cabling its **one NIC** at handover |
+| Office lab network | **production-net** (NAT) |
+| Moving the PC to EGSE rack | re-cabling its **one NIC** at handover |
 
 Everything runs on one laptop — the vocabulary is the real-world analogy.
 
@@ -150,7 +160,7 @@ The installer is a disposable tool — it is not installed on the PC.
 
 A pre-baked OS "recipe":
 
-- Stock Ubuntu + the lab user and ssh key
+- Stock Ubuntu + the lab user and authorized ssh public key
 - **No packages** — everything else happens in the phase that needs the network
 - Built once, reused for every PC
 
@@ -173,7 +183,7 @@ The PC is prepared for its real location before it ships.
 
 ---
 
-## 3 · Handover — shipping
+## 3 · Handover — EGSE rack integration
 
 The PC's **single NIC is re-cabled** from staging to production:
 
@@ -190,7 +200,7 @@ On the production network the PC finally gets its workload:
 
 - package repositories
 - **OS updates**
-- the **EGSE software stack** (git, curl, htop, python3-requests)
+- the **EGSE software stack** (placeholders: git, curl, htop, python3-requests)
 
 Then it's verified — the playbook **asserts**, it doesn't hope.
 

@@ -9,9 +9,9 @@ Read [README.md](../README.md) first for the full technical detail.
 ## The one-sentence pitch
 
 > Industrial PCs arrive in the field as bare machines. This demo shows how one
-> can be staged, installed, and configured **fully automatically** — no
-> technician, no USB stick, no manual steps — from a bare box to a verified,
-> working machine.
+> can be staged, installed, and configured **fully automatically** — no USB
+> stick, no disk clone, no manual steps — from a bare box to a verified, working
+> machine, kept in sync with automatic updates.
 
 ## The mental model to plant early
 
@@ -20,8 +20,8 @@ Read [README.md](../README.md) first for the full technical detail.
 | Freshly delivered industrial PC | a bare **VM** (`egse_pc-01`) |
 | The lab/bench that preps PCs | the **staging server** VM |
 | Factory bench network | **`staging-net`** (isolated) |
-| The plant production network | **`production-net`** (NAT) |
-| Shipping the PC to its site | re-cabling the PC's single NIC at **handover** |
+| Office lab network | **`production-net`** (NAT) |
+| Moving the PC to the EGSE rack | re-cabling the PC's single NIC at **handover** |
 
 Everything is a VM on one laptop, but the vocabulary is the real-world analogy.
 
@@ -56,16 +56,25 @@ Say:
 
 > "An industrial PC is usually delivered without an OS. To bring it into
 > service you'd install from media, configure networking, load the software
-> stack, and test it — by hand, for every machine. This demo automates that
-> whole lifecycle. The key idea: **one staging server prepares the PC; a baked
-> golden image is installed over the network; configuration is applied in two
-> phases — factory, then production — and the result is verified.**"
+> stack, and test it — by hand, for every machine. And that's before the ongoing
+> job of keeping each machine **up to date** as software releases change. This
+> demo automates that whole lifecycle. The key idea: **one staging server
+> prepares the PC; a baked golden image is installed over the network;
+> configuration is applied in two phases — factory, then production — and the
+> result is verified.**"
 
 Point at the two networks concept (or the `staging-server` VM in the VM manager):
 > "The staging server has two NICs: one on the **staging** network, one on the
-> **production** network. The PC will start on the staging network and later be
-> moved — shipped — to production. The staging server never changes network, so
-> it stays the control point the whole time."
+> **production** network, so it bridges both. The PC will start on the isolated
+> staging network and later be moved — cabled into the EGSE rack — onto
+> production. The staging server never changes network, so it stays the control
+> point the whole time."
+
+Call out the one *dangerous* piece:
+> "The staging server runs the DHCP server, but **only on the staging side**.
+> The production network carries no DHCP at all — a rogue DHCP server there
+> would be a real incident. dnsmasq is bound to the staging interface only, so
+> it can never leak onto production."
 
 Run `./scripts/demo.sh`.
 
@@ -99,8 +108,8 @@ Show the VM being created.
 > image over HTTP and writes it to the disk**. Then it powers the machine off."
 
 > "The golden image is the OS 'recipe' — a stock Ubuntu with the lab user and
-> ssh key baked in. No packages, no bloat: everything else happens later, in
-> the phase that actually needs the network."
+> its authorized ssh public key baked in. No packages, no bloat: everything else
+> happens later, in the phase that actually needs the network."
 
 If you have the console open, point at the deploy messages (kernel boot, the
 busybox `EGSE deploy:` lines).
@@ -116,12 +125,13 @@ When it comes back up:
 > keys, and **writes the production network settings but does not apply them
 > yet**. The PC is being prepared for its real location before it ships."
 
-### 3/4 — HANDOVER
+### 3/4 — HANDOVER (EGSE rack integration)
 
-> "This is the shipping moment. The PC's **single network port is moved** from
-> the staging network to the production network — the same NIC, the same
-> machine, just re-cabled to where it will actually live. When it reboots, it
-> comes up on its **static production address**."
+> "This is the integration moment: the PC leaves the bench and goes into the
+> EGSE rack. Its **single network port is re-cabled** from the staging network
+> to the production network — the same NIC, the same machine, just cabled to
+> where it will actually live. When it reboots, it comes up on its **static
+> production address**."
 
 Highlight: this is why the PC has only one port and why the networks don't
 overlap — it really does change "location".
@@ -129,8 +139,10 @@ overlap — it really does change "location".
 ### 4/4 — CONFIGURE + VERIFY (production)
 
 > "On the production network the PC finally gets its real workload: the package
-> repositories, **OS updates**, and the EGSE software stack. Then the playbook
-> **verifies** the end state — it doesn't just hope it worked, it asserts it."
+> repositories, **OS updates**, and the EGSE software stack — here just
+> placeholders (git, curl, htop, python3-requests) standing in for the real
+> packages. Then the playbook **verifies** the end state — it doesn't just hope
+> it worked, it asserts it."
 
 Read the verification summary aloud:
 ```
@@ -141,6 +153,9 @@ ssh keys  = regenerated
 packages  = git, curl, htop, python3-requests
 updates   = up to date
 ```
+
+(Those packages are placeholders in the demo — the point is that the end state
+is asserted, not assumed.)
 
 (The same summary prints for every PC in the run's scope; set `egse_pc_scope`
 to `all` (or `[egse_pc-02]`) in a later run to stage the second PC too.)
@@ -159,6 +174,9 @@ to `all` (or `[egse_pc-02]`) in a later run to stage the second PC too.)
   updates). Mirrors real commissioning.
 - **Control node that never moves.** The staging server bridges both networks,
   so Ansible always runs from the same place.
+- **DHCP only where it belongs.** The staging server's dnsmasq serves DHCP
+  **only on the staging interface**; the production network has none, so it can
+  never leak into — or disrupt — production.
 - **Config over flags.** Everything (IPs, MACs, sizes, demo pacing, **which PCs
   are staged**) lives in the Ansible inventory — the single source of truth. No
   CLI flags, so every run is reproducible. `egse_pc_scope` picks the PCs for a
