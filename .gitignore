@@ -2,3 +2,10 @@
 # These are generated at runtime and must never be committed.
 lab/*
 !lab/.gitkeep
+
+# Rendered slide deck artifacts (regenerate with Marp; not source)
+docs/slides.html
+docs/slides.pdf
+
+# Local editor config
+.vscode/
