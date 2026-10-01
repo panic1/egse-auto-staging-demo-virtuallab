@@ -1,23 +1,31 @@
 #!/usr/bin/env bash
-# Fetch the demo's offline dependencies: the bundled apt repo the EGSE PC uses
-# when the demo runs without a network.
+# Fetch the lab's offline dependencies: the bundled apt repo both the EGSE PC
+# and the staging server install from when the lab runs without a network.
 #
-# Core demo concept: the demo's software install on the PC normally comes from
-# the Ubuntu archive (the demo is ONLINE by default). To run the demo OFFLINE,
-# this script bundles the exact EGSE package set (inventory/group_vars/egse_pcs.yml,
-# egse_pc_packages) plus all their dependencies into a small flat apt repo at
-# lab/apt-repo/. The staging server serves it to the PC (apt_repo_url); the
-# offline demo points the PC's apt at it (see ROADMAP Task 7).
+# Core demo concept: software normally comes from the Ubuntu archive (the lab
+# is ONLINE by default). To run OFFLINE, this script bundles the exact package
+# sets — the PC's EGSE stack (inventory/group_vars/egse_pcs.yml,
+# egse_pc_packages) and the staging server's own tools
+# (inventory/group_vars/staging.yml, staging_packages) — plus all their
+# dependencies into a small flat apt repo at lab/apt-repo/.
 #
-# Scope: only the DEMO has an offline mode. Setup stays online-only, so this
-# script does not cache the cloud image, deploy kernel, or PXE files — those
-# are fetched at online setup.
+#   - The PC installs from it over HTTP: the staging server serves the repo at
+#     apt_repo_url (see ROADMAP Task 7).
+#   - The staging server installs from it locally (file:.../lab/apt-repo), so
+#     setup.sh can recreate and provision the staging server with no network
+#     (see ROADMAP Task 12).
+#
+# Scope: only the lab has an offline mode. This script does not cache the cloud
+# image, deploy kernel, or PXE files — those are fetched at online setup.
+# Golden image, deploy tool, and cloud image are kept across teardown with
+# teardown_clean: false.
 #
 # Idempotent: re-running skips work whose output already exists. Delete
-# lab/apt-repo to rebuild (e.g. after changing egse_pc_packages).
+# lab/apt-repo to rebuild (e.g. after changing egse_pc_packages or
+# staging_packages).
 #
-# setup.sh calls this automatically when online, so "running the demo once
-# online" primes the offline backup.
+# setup.sh calls this automatically when online, so one online run primes the
+# offline backup.
 
 set -euo pipefail
 . "$(dirname "$0")/lib/common.sh"
@@ -66,7 +74,25 @@ main() {
     echo "ERROR: no egse_pc_packages found in the inventory." >&2
     exit 1
   fi
-  echo "Bundling the EGSE software stack: ${pkgs[*]}"
+
+  # The staging server's own packages (dnsmasq, pxelinux, ansible, rsync) are
+  # bundled into the same repo, so setup.sh can provision/recreate the staging
+  # server with no network at the meeting (inventory/group_vars/staging.yml).
+  # Read them from the staging-server host.
+  local staging_pkgs
+  staging_pkgs="$(labvar_list staging-server staging_packages | grep -v '^$' | tr '\n' ' ')"
+  if [ -z "$staging_pkgs" ]; then
+    echo "WARNING: no staging_packages found in the inventory;" >&2
+    echo "  the staging server will not be installable offline." >&2
+  else
+    for pkg in $staging_pkgs; do
+      pkgs+=("$pkg")
+    done
+  fi
+
+  echo "Bundling the lab's offline package set:"
+  echo "  EGSE PC stack     : $(labvar_list "$pkg_host" egse_pc_packages | grep -v '^$' | tr '\n' ' ')"
+  echo "  staging server    : ${staging_pkgs:-<none>}"
 
   mkdir -p "$APT_REPO"
 

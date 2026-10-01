@@ -106,9 +106,10 @@ apply. Undo it later with `sudo ./scripts/install_prereqs.sh --uninstall`.
 This bakes the golden image (if needed), defines the two demo networks and the
 staging server VM, syncs the repo to the staging server, and configures it with
 Ansible (dnsmasq DHCP/TFTP/PXE, the HTTP server, the PXE boot files). When
-online, it also bundles the PC's EGSE packages into a small apt repo
-(`scripts/fetch_dependencies.sh`) so the **demo can later run with no network**.
-It is idempotent — safe to re-run.
+online, it also bundles the EGSE PC's packages **and the staging server's own
+packages** into a small apt repo (`scripts/fetch_dependencies.sh`), so a later
+`setup.sh` **and** `demo.sh` can run with no network. It is idempotent — safe to
+re-run.
 
 ### 3. Run the demo
 
@@ -147,12 +148,14 @@ so the initial `setup.sh` already primed dnsmasq with **both** DHCP
 reservations. The scope change is the only thing that decides which PC a
 `demo.sh` run stages.
 
-**Offline demo.** Only the demo has an offline mode — setup stays online. After
-an online `setup.sh` (which primes the offline apt repo), you can disconnect the
-network and `demo.sh` still works: it auto-detects the missing network and the
-PC's production phase installs the EGSE software stack from the bundled repo
-(`lab/apt-repo/`) served by the staging server, instead of from
-`archive.ubuntu.com`.
+**Offline setup and demo.** After one online `setup.sh` has primed the offline
+apt repo (`lab/apt-repo/`, kept across teardown with `teardown_clean: false`),
+the whole lab can run with no network. `setup.sh` auto-detects the missing
+network, reuses the cached cloud image/golden image/deploy assets (rebuilding
+nothing), recreates the staging server, and installs its packages from the
+bundled repo instead of `archive.ubuntu.com`. `demo.sh` then installs the PC's
+EGSE software stack from the same repo, served by the staging server, instead of
+from the Ubuntu archive. Neither step needs internet once the bundle exists.
 
 ### 4. Tear down
 
@@ -208,12 +211,13 @@ Nitty-gritty details. Read this section when you need specifics.
 - The demo defines its own two networks in the system daemon (`production-net` on
   `10.10.122.0/24` — **no DHCP**, every device static — and `staging-net` on
   `10.10.0.0/24`); it does not touch the host's `default` network.
-- Network: **setup runs online** — it fetches the cloud image and build assets and
-  provisions the staging server. The **demo can then run offline**: online setup
-  bundles the PC's EGSE packages into a small apt repo (`lab/apt-repo/`, via
-  `scripts/fetch_dependencies.sh`) that the staging server serves to the PC, so
-  `demo.sh` works with no internet. Fetching everything requires internet at least
-  once (during setup).
+- Network: fetching everything requires internet **once** (an online setup).
+  After that the **whole lab runs offline**: online setup bundles the EGSE PC's
+  packages and the staging server's own packages into a small apt repo
+  (`lab/apt-repo/`, via `scripts/fetch_dependencies.sh`), which the staging
+  server uses for its own provisioning and serves to the PC. `setup.sh` and
+  `demo.sh` then work with no internet, reusing the cached cloud image, golden
+  image, and deploy assets rather than rebuilding them.
 
 #### Assumptions
 

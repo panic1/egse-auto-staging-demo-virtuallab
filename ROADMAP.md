@@ -57,26 +57,30 @@ industrial PC, from scratch, with a staging server.
 
 ### Milestone 3 — Offline Fallback
 
-Make the demo runnable without a network: setup stays online, but after one
-online run the demo's software install on the PC works with no internet, using
-a bundled apt repo.
+Make the whole lab runnable without a network: after one online run, both
+`setup.sh` (staging server provisioning) and the demo's software install on the
+PC work with no internet, using a bundled apt repo.
 
 **Acceptance criteria**
 
-- `fetch_dependencies.sh` bundles the EGSE PC's package set and dependencies
-  into a small apt repo (`lab/apt-repo/`) with a `Packages.gz` index and a
-  `SHA256SUMS` manifest; `setup.sh` primes it automatically when online.
-- `demo.sh` auto-detects the network (`scripts/lib/common.sh`): online → the PC
-  uses the Ubuntu archive; offline → the bundled apt repo and nothing else.
-- Running setup once while online primes the repo, so the demo works with no
-  network afterwards.
-- Offline: no outbound internet on the host, the staging server, or the PC; the
-  bundled apt repo is reachable by the PC (production phase). Setup remains
-  online-only.
+- `fetch_dependencies.sh` bundles the EGSE PC's package set **and the staging
+  server's own package set** (plus dependencies) into a small apt repo
+  (`lab/apt-repo/`) with a `Packages.gz` index and a `SHA256SUMS` manifest;
+  `setup.sh` primes it automatically when online.
+- `setup.sh` and `demo.sh` auto-detect the network (`scripts/lib/common.sh`):
+  online → the Ubuntu archive; offline → the bundled apt repo and nothing else.
+- Running setup once while online primes the repo, so setup and the demo both
+  work with no network afterwards.
+- Offline: no outbound internet on the host, the staging server, or the PC.
+  `setup.sh` recreates the staging server from the cached cloud image, reuses
+  the cached golden image/deploy assets (no rebuild), and installs the staging
+  server's packages from the bundled repo; the PC installs its stack from the
+  same repo (served over HTTP). Nothing is fetched from the internet.
 - `README.md` documents the fallback behavior.
 
 **Tasks:** [Task 6](#task-6-offline-dependency-fetch) ·
-[Task 7](#task-7-offline-fallback)
+[Task 7](#task-7-offline-fallback) ·
+[Task 12](#task-12-offline-setup)
 
 ---
 
@@ -349,6 +353,9 @@ Present the working demo to an audience.
   production phase. The original "boot-asset cache + manifest" scope (cloud
   image, syslinux/pxelinux, busybox, deploy kernel) was dropped accordingly —
   those are all fetched at online setup.
+  **Superseded by [Task 12](#task-12-offline-setup):** setup now also runs
+  offline, installing its own packages from the same bundled repo; the bundle
+  was extended with `staging_packages`.
 - **Bundled apt repo** (explicit `.deb` set + `dpkg-scanpackages`) chosen over
   `apt-cacher-ng` or baking everything into the image: deterministic, small,
   and easy to explain in the demo. Flat repo + `[trusted=yes]` (no GPG).
@@ -540,3 +547,53 @@ Present the working demo to an audience.
 **Design decisions**
 
 - TBD.
+
+---
+
+### Task 12: Offline setup
+
+**Status:** `[x]`
+
+**Work instructions**
+
+- Bundle the staging server's own package set (`staging_packages`) into the
+  offline apt repo alongside the PC's, so `setup.sh` can provision the staging
+  server with no network.
+- Give the `staging_server` role an offline install path: point apt at the
+  bundled flat repo and drop the archive sources before installing.
+- `setup.sh` passes the detected mode explicitly to `staging.yml` (one shared
+  `apt_offline` value), so an inventory default can't decide it; the
+  golden/deploy bake self-skips when the cached assets are present.
+
+**Design information**
+
+- **Why:** the demo travel plan is online `setup.sh` + `teardown.sh`
+  (`teardown_clean: false`) at home, then offline `setup.sh` + `demo.sh` at the
+  meeting. Teardown destroys the staging server VM, so the meeting setup must
+  recreate it from the cached cloud image and install its five packages with no
+  network. Previously only the PC's packages were bundled, so the "install
+  staging server packages" task failed offline.
+- **Three installs** across the trip: (1) home setup provisions the staging
+  server online; (2) meeting setup provisions the staging server offline from
+  the bundle; (3) meeting demo provisions the PC offline from the bundle. Runs
+  (2) and (3) reuse the cached cloud image, golden image, deploy assets, and
+  apt repo — nothing is rebuilt or fetched.
+- `staging_packages` lives in `inventory/group_vars/staging.yml` (single source
+  of truth), read by both the role and `fetch_dependencies.sh`.
+
+**Design decisions**
+
+- **One shared `apt_offline` value, not a staging-specific flag.** Each run
+  provisions exactly one machine, and each script knows the network state at
+  that moment, so `setup.sh` and `demo.sh` each pass the mode explicitly.
+  `ansible-playbook staging.yml` run manually falls back to the inventory value.
+- **Mechanism: rewrite the staging server's apt sources** (`deb [trusted=yes]
+  file:<repo> ./`, remove `ubuntu.sources`) rather than a one-off apt option.
+  This mirrors the PC's `production.yml`, so the "use the bundle when offline"
+  idea is taught once and reused; the staging server is disposable, so the
+  rewrite needs no restore.
+- **Offline setup requires a primed bundle.** If `lab/apt-repo` is missing, the
+  role fails with clear guidance instead of a confusing apt error.
+- **Known minor issue (deferred):** `setup.sh` used to print "Building the
+  golden image ..." before calling the idempotent bake, which read like a
+  rebuild even when it skipped; the message is now neutral.

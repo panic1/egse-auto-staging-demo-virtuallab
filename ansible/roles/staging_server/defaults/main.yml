@@ -10,3 +10,9 @@ demo_dir: /srv/egse-demo
 # staging_ip); these defaults keep the role self-contained.
 staging_ip: 10.10.0.2
 staging_dhcp_range: "10.10.0.10,10.10.0.100,255.255.255.0,12h"
+
+# Packages the staging server installs for its own operation. Declared in the
+# inventory (inventory/group_vars/staging.yml, staging_packages) — the single
+# source of truth — so scripts/fetch_dependencies.sh can bundle them too. This
+# default only keeps the role self-contained.
+staging_packages: []

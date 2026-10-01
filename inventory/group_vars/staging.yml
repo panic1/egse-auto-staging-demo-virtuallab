@@ -15,3 +15,16 @@ mgmt_ip: 10.10.122.2      # production side (eth0); also hosts the apt repo
 staging_ip: 10.10.0.2     # isolated staging side (eth1); dnsmasq/PXE here
 mgmt_mac: "52:54:00:00:00:02"
 staging_mac: "52:54:00:00:00:03"
+
+# Packages the staging server installs for its own operation: dnsmasq
+# (DHCP/TFTP/PXE), the pxelinux/syslinux boot files, ansible (the PCs'
+# control node), and rsync. This is the single source of truth: the role
+# installs them and scripts/fetch_dependencies.sh bundles them into the
+# offline apt repo, so setup.sh can provision the staging server with no
+# network (see ROADMAP Task 12).
+staging_packages:
+  - dnsmasq
+  - pxelinux
+  - syslinux-common
+  - ansible
+  - rsync

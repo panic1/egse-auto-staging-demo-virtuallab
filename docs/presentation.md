@@ -185,14 +185,18 @@ to `all` (or `[egse_pc-02]`) in a later run to stage the second PC too.)
 
 ## Offline variant (Milestone 3)
 
-> "This also runs with no internet." Setup runs online once and bundles the
-> PC's software into a small apt repo served by the staging server. Then cut
-> the network and run `demo.sh`: it auto-detects the missing network, prints
-> **`Mode: offline`**, and the PC installs its software from that bundled repo
-> instead of the Ubuntu archive.
+> "This also runs with no internet." Run `setup.sh` online once: it bundles the
+> PC's software *and* the staging server's own packages into a small apt repo.
+> Then cut the network. `setup.sh` still works — it reuses the cached cloud
+> image, golden image, and deploy assets (nothing is rebuilt), recreates the
+> staging server, and installs its packages from the bundle. `demo.sh` then
+> auto-detects the missing network, prints **`Mode: offline`**, and the PC
+> installs its software from that bundled repo instead of the Ubuntu archive.
 
-If the demo should end offline: run `setup.sh` online, disconnect, run
-`demo.sh`, and call out the "Mode: offline" line.
+This is the travel workflow: online setup + `teardown.sh` (`teardown_clean:
+false`, which keeps the cache/golden image/deploy assets/apt repo) at home,
+then offline `setup.sh` + `demo.sh` at the meeting. Teardown destroys the
+staging VM to save battery, so the offline setup rebuilds it from cache.
 
 ## Teardown / reset between shows
 

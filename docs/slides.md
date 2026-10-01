@@ -229,13 +229,13 @@ addresses, and hostname from `inventory/host_vars/`.)
 
 ## Offline fallback
 
-Only the **demo** has an offline mode; setup stays online.
+After **one online run**, the whole lab runs offline — no mode flag.
 
-- Online `setup.sh` **bundles** the PC's software into a small apt repo served by the staging server
-- Cut the network, run `demo.sh` → it prints **`Mode: offline`**
-- The PC installs its software from the bundled repo, not the Ubuntu archive
+- Online `setup.sh` **bundles** the PC's software *and* the staging server's own packages into a small apt repo
+- At the meeting: `setup.sh` → recreates the staging server and installs its packages from the bundle
+- `demo.sh` → prints **`Mode: offline`**; the PC installs its software from the bundle, not the Ubuntu archive
 
-The offline scenario is a ready-made backup — no mode flag.
+Cached cloud image, golden image, and deploy assets are reused — nothing is rebuilt.
 
 ---
 

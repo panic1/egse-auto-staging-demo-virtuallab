@@ -5,14 +5,47 @@
 # - deploys the PXE boot files and the golden image to the tftp/http roots
 # - serves a bundled apt repository (used in offline mode, Task 6/7)
 # - becomes the Ansible control node for the PCs
+# When the setup run is offline, point apt at the bundled flat repo (rsynced
+# with the demo to {{ demo_dir }}/lab/apt-repo) instead of the Ubuntu archive,
+# and drop the archive sources so `apt-get update` never needs the network.
+# This mirrors the PC's production phase (egse_pc/tasks/production.yml): the
+# same "use the bundle when offline" idea, applied to the staging server's own
+# packages. The staging server is disposable, so the rewritten sources need no
+# restore step.
+- name: Check the bundled offline apt repo is present (offline setup)
+  ansible.builtin.stat:
+    path: "{{ demo_dir }}/lab/apt-repo/Packages"
+  register: staging_apt_repo_stat
+  when: apt_offline | default(false) | bool
+
+- name: Fail with guidance when the offline apt repo is missing
+  ansible.builtin.fail:
+    msg: >-
+      Offline setup needs the bundled apt repo at {{ demo_dir }}/lab/apt-repo,
+      but it is not there. Run ./scripts/fetch_dependencies.sh (or an online
+      ./scripts/setup.sh) once so the staging server's packages are bundled.
+  when:
+    - apt_offline | default(false) | bool
+    - not staging_apt_repo_stat.stat.exists
+
+- name: Point apt at the bundled offline repo
+  ansible.builtin.copy:
+    content: |
+      # Offline setup: the bundled apt repo, synced with the demo.
+      deb [trusted=yes] file:{{ demo_dir }}/lab/apt-repo ./
+    dest: /etc/apt/sources.list
+    mode: "0644"
+  when: apt_offline | default(false) | bool
+
+- name: Remove the deb822 default sources so only the bundled repo is used
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/ubuntu.sources
+    state: absent
+  when: apt_offline | default(false) | bool
+
 - name: Install staging server packages
   ansible.builtin.apt:
-    name:
-      - dnsmasq
-      - pxelinux
-      - syslinux-common
-      - ansible
-      - rsync
+    name: "{{ staging_packages }}"
     state: present
     update_cache: true
 
