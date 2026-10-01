@@ -204,10 +204,10 @@ staging VM to save battery, so the offline setup rebuilds it from cache.
 ./scripts/teardown.sh
 ```
 
-With `teardown_clean: true` (default) this removes the cache, golden image,
-offline repo, and keys — a truly clean slate. Set `teardown_clean: false` to
-keep the offline assets for faster re-runs. Then `setup.sh` again for the next
-show.
+By default (`teardown_clean: false`) this **keeps** the cache, golden image,
+deploy assets, offline repo, and keys, so the lab can be brought back up offline
+and re-runs don't re-fetch everything. Set `teardown_clean: true` for a truly
+clean slate. Then `setup.sh` again for the next show.
 
 ## Likely questions & answers
 

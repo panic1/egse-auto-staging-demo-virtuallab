@@ -228,9 +228,10 @@ Present the working demo to an audience.
   from the host at all, only via the staging server.
 - The repo is **rsynced to the staging server** (`/srv/egse-demo`) so it is the Ansible
   control node for the PCs; VM disks and ISOs are excluded.
-- `teardown.sh` removes the cache, keys, and golden image **when `teardown_clean` is
-  true (default)** — config-driven, no `--clean` flag. Set `teardown_clean: false` to
-  keep them (e.g. so the offline backup stays primed across repeated teardowns).
+- `teardown.sh` removes the cache, keys, golden image, deploy assets, and offline
+  apt repo **when `teardown_clean` is true** — config-driven, no `--clean` flag.
+  The default is `false` (keep them), so the offline assets survive teardown (the
+  travel workflow); set `teardown_clean: true` for a clean slate.
 - **Config-over-flags**: demo behavior is driven by the inventory config, never by
   command-line flags, so every run is reproducible. Flags remain only on
   administrative tools (`install_prereqs.sh --uninstall/--help`). `demo.sh` follows
@@ -480,7 +481,7 @@ Present the working demo to an audience.
     cleanly with no pauses, no terminal windows, and the verification summary
     printed. No gaps found.
 - Config was restored to defaults afterwards (`demo_pause: true`,
-  `open_terminal_on_demo: true`, `teardown_clean: true`).
+  `open_terminal_on_demo: true`, `teardown_clean: false`).
 
 **Design decisions**
 

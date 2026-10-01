@@ -65,8 +65,9 @@ The demo runs entirely from `scripts/`, driven by the inventory:
       state (hostname, production address live, netplan in place, ssh keys
       regenerated, packages present, nothing upgradable).
 
-3. **`teardown.sh`** destroys the VMs and networks and cleans up lab artifacts
-   (keeping the cache/golden image unless `teardown_clean: true`).
+3. **`teardown.sh`** destroys the VMs and networks (keeping the cache, golden
+   image, deploy assets, ssh keys, and offline apt repo by default; set
+   `teardown_clean: true` to remove them).
 
 **Typical run times** (measured on the reference host, online, `demo_pause: false`):
 `teardown.sh` ≈ **0.1 min**; `setup.sh` ≈ **0.5 min** for an incremental re-run
@@ -163,10 +164,11 @@ from the Ubuntu archive. Neither step needs internet once the bundle exists.
 ./scripts/teardown.sh
 ```
 
-Destroys the VMs and the demo networks and cleans up lab artifacts. By default
-(`teardown_clean: true`) it also removes the dependency cache, golden image,
-deploy assets, and ssh keys; set `teardown_clean: false` to keep them (e.g. so
-the offline cache stays primed across repeated runs).
+Destroys the VMs and the demo networks. By default (`teardown_clean: false`) it
+**keeps** the dependency cache, golden image, deploy assets, ssh keys, and
+offline apt repo, so the lab can be brought back up offline and repeated runs
+don't re-fetch everything. Set `teardown_clean: true` for a truly clean slate
+that removes them.
 
 ## Reference
 

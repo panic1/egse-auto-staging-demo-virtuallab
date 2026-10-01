@@ -3,9 +3,9 @@
 # up lab artifacts.
 #
 # Core demo concept: teardown is the reverse of setup and just as idempotent —
-# re-running it is safe. Whether the dependency cache, golden image, and ssh
-# keys are also removed is configured in the inventory
-# (group_vars/all.yml, teardown_clean, default true), so teardown is
+# re-running it is safe. Whether the dependency cache, golden image, deploy
+# assets, ssh keys, and offline apt repo are also removed is configured in the
+# inventory (group_vars/all.yml, teardown_clean, default false), so teardown is
 # reproducible with no command-line flags.
 
 set -euo pipefail
@@ -18,7 +18,7 @@ STAGING_NET="$(labvar $STAGING_NAME staging_network staging-net)"
 PRODUCTION_NET="$(labvar $STAGING_NAME production_network production-net)"
 STORAGE_POOL="$(labvar $STAGING_NAME storage_pool default)"
 PC_PREFIX="$(labvar $STAGING_NAME egse_pc_name_prefix egse_pc-)"
-TEARDOWN_CLEAN="$(labvar $STAGING_NAME teardown_clean true | tr '[:upper:]' '[:lower:]')"
+TEARDOWN_CLEAN="$(labvar $STAGING_NAME teardown_clean false | tr '[:upper:]' '[:lower:]')"
 
 destroy_domain() {
   local name="$1"

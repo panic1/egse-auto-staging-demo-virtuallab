@@ -113,10 +113,8 @@ open_terminal_on_setup: true
 demo_pause: true
 open_terminal_on_demo: true
 
-# Remove cache, keys, and golden image on teardown. Default true keeps the host
-# clean after a demo; set false to preserve the offline-backup assets.
-#
-# REMINDER: during repeated setup/teardown testing, set this to false so the
-# cache and golden image survive each teardown (otherwise every run re-fetches
-# them). Remember to revert it to your intended value before the real demo.
-teardown_clean: true
+# Remove the cache, keys, golden image, deploy assets, and offline apt repo on
+# teardown. The default is false: teardown keeps those assets, so the lab can be
+# brought up offline afterwards (the travel workflow) and repeated runs do not
+# re-fetch everything. Set true for a truly clean slate.
+teardown_clean: false
