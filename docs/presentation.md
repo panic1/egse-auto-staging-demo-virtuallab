@@ -65,7 +65,7 @@ Say:
 
 Point at the two networks concept (or the `staging-server` VM in the VM manager):
 > "The staging server has two NICs: one on the **staging** network, one on the
-> **production** network, so it bridges both. The PC will start on the isolated
+> **production** network, so it sits in both. The PC will start on the isolated
 > staging network and later be moved — cabled into the EGSE rack — onto
 > production. The staging server never changes network, so it stays the control
 > point the whole time."
@@ -172,7 +172,7 @@ to `all` (or `[egse_pc-02]`) in a later run to stage the second PC too.)
 - **Two-phase configuration.** Factory config on the staging network (identity,
   security, network plans) vs. production config after handover (software +
   updates). Mirrors real commissioning.
-- **Control node that never moves.** The staging server bridges both networks,
+- **Control node that never moves.** The staging server sits in both networks,
   so Ansible always runs from the same place.
 - **DHCP only where it belongs.** The staging server's dnsmasq serves DHCP
   **only on the staging interface**; the production network has none, so it can

@@ -83,8 +83,8 @@ No USB stick, no disk clone, no manual steps, automatic updates, in-sync configu
 
 ## The lab 2
 
-- The staging server bridges both networks.
-- the PC starts on the isolated **staging-net** and is mmanually re-cabled to **production-net** at handover.
+- The staging server sits in both networks.
+- the PC starts on the isolated **staging-net** and is manually re-cabled to **production-net** at handover.
 - The staging server deploys a **DHCP server** on the staging network only. (DANGER)
 
 ---
@@ -243,7 +243,7 @@ Cached cloud image, golden image, and deploy assets are reused — nothing is re
 
 ## Key concepts
 
-- **Control node that never moves** — the staging server bridges both networks
+- **Control node that never moves** — the staging server sits in both networks
 - **Config over flags** — everything (IPs, MACs, sizes, pacing, which PCs are
   staged via `egse_pc_scope`) lives in the Ansible inventory; no CLI flags →
   reproducible runs
